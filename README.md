@@ -25,7 +25,13 @@ Anime Scraper API is a project built with FastAPI to scrape anime data and downl
    source env/bin/activate  # On Windows use `env\Scripts\activate`
    ```
 
-3. Create an .env file in the root of the project and add the following environment variables:
+3. Run the following command:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Create an .env file in the root of the project and add the following environment variables:
 
    ```env
    HOST=127.0.0.1
