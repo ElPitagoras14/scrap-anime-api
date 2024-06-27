@@ -9,8 +9,17 @@ Anime Scraper API is a project built with FastAPI to scrape anime data and downl
 - Python 3.7+
 - pip
 - Docker (Only for Docker use)
+- Redis Database
 
 ## Getting Started
+
+### Redis Installation
+
+1. Create a Redis Database with the following command:
+
+   ```bash
+   docker-compose up -d redis-stack
+   ```
 
 ### Docker Use
 
