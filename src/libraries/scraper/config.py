@@ -5,6 +5,7 @@ from pydantic_settings import SettingsConfigDict
 
 class ScraperSettings(BaseSettings):
     HOST: str
+    IN_DOCKER: bool = False
 
     model_config = SettingsConfigDict(
         env_file=find_dotenv(filename=".env", usecwd=True),

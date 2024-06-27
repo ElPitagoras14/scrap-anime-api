@@ -2,7 +2,7 @@ import asyncio
 from bs4 import BeautifulSoup
 from selenium.webdriver.common.by import By
 
-from .utils import DELAY_TIME, EdgeDriverContext, parse_episode_range
+from .utils import DELAY_TIME, ChromeDriverContext, parse_episode_range
 from .tab_links import get_sw_link, get_yourupload_link
 from .table_links import get_streamtape_download_link
 from .config import scraper_settings
@@ -15,7 +15,7 @@ ANIME_HOST = scraper_settings.HOST
 
 
 async def get_streaming_links(anime):
-    with EdgeDriverContext() as driver:
+    with ChromeDriverContext() as driver:
         driver.get(ANIME_HOST + f"/anime/{anime}")
         driver.implicitly_wait(1)
 
@@ -59,7 +59,7 @@ async def get_streaming_links(anime):
 
 
 async def get_single_episode_download_link(episode_link):
-    with EdgeDriverContext() as driver:
+    with ChromeDriverContext() as driver:
         return await get_single_download_link(episode_link, driver)
 
 
@@ -117,7 +117,7 @@ async def get_download_links(episode_links, episodes_range=None):
         if episodes_range
         else range(1, len(episode_links) + 1)
     )
-    with EdgeDriverContext() as driver:
+    with ChromeDriverContext() as driver:
         final_download_links = []
         anime = "-".join(
             episode_links[0]["link"].split("/")[-1].split("-")[:-1]

@@ -30,6 +30,7 @@ Anime Scraper API is a project built with FastAPI to scrape anime data and downl
    PORT=8000
    DEBUG=True
    APP_NAME=main:app
+   IN_DOCKER=True
    ANIME_HOST=
    REDIS_HOST=redis-stack
    REDIS_PORT=6379

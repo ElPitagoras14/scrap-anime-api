@@ -18,6 +18,7 @@ idna==3.6
 more-itertools==10.3.0
 multidict==6.0.5
 outcome==1.3.0.post0
+packaging==24.1
 pycparser==2.22
 pydantic==2.6.4
 pydantic-settings==2.2.1
@@ -44,5 +45,6 @@ types-setuptools==70.1.0.20240627
 typing_extensions==4.10.0
 urllib3==2.2.1
 uvicorn==0.29.0
+webdriver-manager==4.0.1
 wsproto==1.2.0
 yarl==1.9.4

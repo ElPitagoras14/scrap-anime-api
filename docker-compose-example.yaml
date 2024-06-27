@@ -9,6 +9,7 @@ services:
       - PORT=8000
       - DEBUG=True
       - APP_NAME=main:app
+      - IN_DOCKER=True
       - ANIME_HOST=
       - REDIS_HOST=redis-stack
       - REDIS_PORT=6379
