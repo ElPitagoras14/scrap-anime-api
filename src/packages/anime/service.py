@@ -1,6 +1,14 @@
 import asyncio
 import aiohttp
 from bs4 import BeautifulSoup
+from datetime import datetime
+
+from libraries.scraper import (
+    get_streaming_links,
+    get_download_links,
+    get_single_episode_download_link,
+)
+from ..redis import DownloadRedis
 
 from .config import anime_settings
 from .utils import (
@@ -9,12 +17,9 @@ from .utils import (
     cast_anime_info,
     cast_anime_streaming_links,
     cast_single_anime_download_link,
+    cast_download_history,
 )
-from libraries.scraper import (
-    get_streaming_links,
-    get_download_links,
-    get_single_episode_download_link,
-)
+from .schemas import Download
 
 HOST = anime_settings.HOST
 
@@ -91,7 +96,6 @@ async def get_download_links_controller(
     )
     download_links = await asyncio.gather(task)
     download_links = download_links[0]
-    print(download_links)
     casted_streaming_links = cast_anime_download_links(download_links)
     return casted_streaming_links
 
@@ -104,3 +108,33 @@ async def get_single_download_link_controller(
     download_link = await asyncio.gather(task)
     download_link = download_link[0]
     return cast_single_anime_download_link(name, download_link, episode_id)
+
+
+def get_anime_history_controller():
+    history = DownloadRedis.find(DownloadRedis.type == "history").all()
+    return cast_download_history(history)
+
+
+def save_anime_history_controller(anime: Download):
+    download_redis = DownloadRedis(
+        id=anime.id,
+        date=datetime.strptime(anime.date, "%Y-%m-%dT%H:%M:%S.%fZ"),
+        type="history",
+        file_url=anime.file_url,
+        file_name=anime.file_name,
+        anime=anime.anime,
+        episode_id=anime.episode_id,
+        description=anime.description,
+        image_src=anime.image_src,
+        progress=anime.progress,
+        total_size=anime.total_size,
+    )
+    download_redis.save()
+    exists = DownloadRedis.find(DownloadRedis.id == anime.id).count()
+    return exists == 1
+
+
+def delete_anime_history_controller(anime_id: str):
+    DownloadRedis.delete(anime_id)
+    exists = DownloadRedis.find(DownloadRedis.id == anime_id).count()
+    return exists == 0

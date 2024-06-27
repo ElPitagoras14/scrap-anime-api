@@ -11,12 +11,12 @@ unuseful_tabs = ["Mega"]
 role_value = "tablist"
 xpath_expression = f'//*[@role="{role_value}"]'
 
-SCRAPER_HOST = scraper_settings.HOST
+ANIME_HOST = scraper_settings.HOST
 
 
 async def get_streaming_links(anime):
     with EdgeDriverContext() as driver:
-        driver.get(SCRAPER_HOST + f"/anime/{anime}")
+        driver.get(ANIME_HOST + f"/anime/{anime}")
         driver.implicitly_wait(1)
 
         episodes_box = driver.find_element(By.ID, "episodeList")
@@ -51,7 +51,7 @@ async def get_streaming_links(anime):
             class_name = episode["class"]
             if "Next" in class_name:
                 continue
-            link = SCRAPER_HOST + episode.find("a")["href"]
+            link = ANIME_HOST + episode.find("a")["href"]
             name = episode.find("p").text
             links.append({"link": link, "name": name})
         links.reverse()
@@ -102,14 +102,12 @@ async def get_single_download_link(episode_link, driver):
             src_link = await get_sw_link(driver)
             if not src_link:
                 continue
-            print(src_link)
             return src_link
 
         if title == "YourUpload":
             src_link = await get_yourupload_link(driver)
             if not src_link:
                 continue
-            print(src_link)
             return src_link
 
 

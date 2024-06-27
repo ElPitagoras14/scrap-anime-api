@@ -8,8 +8,47 @@ Anime Scraper API is a project built with FastAPI to scrape anime data and downl
 
 - Python 3.7+
 - pip
+- Docker (Only for Docker use)
 
-## Installation
+## Getting Started
+
+### Docker Use
+
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/ElPitagoras14/scrap-anime-api.git
+   cd scrap-anime-api
+   ```
+
+2. Rename the file `docker-compose-example.yaml` to `docker-compose.yaml`.
+
+3. Fill the following environment variables in `docker-compose.yaml`.
+
+   ```env
+   HOST=0.0.0.0
+   PORT=8000
+   DEBUG=True
+   APP_NAME=main:app
+   ANIME_HOST=
+   REDIS_HOST=redis-stack
+   REDIS_PORT=6379
+   ```
+4. Create a `.env` file with the following variable:
+
+   ```env
+   COMPOSE_PROJECT_NAME=back-scraper
+   ```
+
+5. Build the image:
+
+   ```bash
+   docker-compose up -d
+   ```
+
+The server should be running at `http://127.0.0.1:8000`.
+
+### Development Use
 
 1. Clone the repository:
 
@@ -39,20 +78,19 @@ Anime Scraper API is a project built with FastAPI to scrape anime data and downl
    DEBUG=True
    APP_NAME=main:app
    ANIME_HOST=
-   SCRAPER_HOST=
+   REDIS_HOST=127.0.0.1
+   REDIS_PORT=6379
    ```
 
-## Running the Server
+5. Make sure your virtual environment is activated (if you created one).
 
-1. Make sure your virtual environment is activated (if you created one).
-
-2. Navigate to the src folder and run the script:
+6. Navigate to the src folder and run the script:
 
    ```bash
    python main.py
    ```
 
-3. If you use VSCode, you can use task to run the project.
+7. If you use VSCode, you can use task to run the project.
 
 The server should be running at `http://127.0.0.1:8000`.
 

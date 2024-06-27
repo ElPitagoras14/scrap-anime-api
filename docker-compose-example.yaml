@@ -1,0 +1,22 @@
+version: "3"
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DEBUG=True
+      - APP_NAME=main:app
+      - ANIME_HOST=
+      - REDIS_HOST=redis-stack
+      - REDIS_PORT=6379
+    depends_on:
+      - redis-stack
+    container_name: scraper
+
+  redis-stack:
+    image: redis/redis-stack:latest
+    ports:
+      - "6379:6379"

@@ -7,6 +7,7 @@ from .responses import (
     DownloadLink,
     Episode,
 )
+from .schemas import Download
 
 
 def cast_anime_info(title: str, cover: str, finished: str, description: str):
@@ -72,3 +73,21 @@ def cast_anime_download_links(download_links: list[dict]):
         ],
         total=len(download_links),
     )
+
+
+def cast_download_history(download_history: list[dict]):
+    return [
+        Download(
+            id=history.id,
+            date=history.date.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+            file_url=history.file_url,
+            file_name=history.file_name,
+            anime=history.anime,
+            episode_id=history.episode_id,
+            description=history.description,
+            image_src=history.image_src,
+            progress=history.progress,
+            total_size=history.total_size,
+        )
+        for history in download_history
+    ]

@@ -13,6 +13,9 @@
       "options": {
         "cwd": "${workspaceFolder}/src"
       },
+      "runOptions": {
+        "runOn": "folderOpen"
+      },
       "problemMatcher": []
     }
   ]

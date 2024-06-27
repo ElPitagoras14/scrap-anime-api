@@ -2,6 +2,8 @@ from pydantic import BaseModel
 
 from utils.responses import SuccessResponse
 
+from .schemas import Download
+
 
 class DownloadLink(BaseModel):
     name: str
@@ -63,3 +65,7 @@ class AnimeOut(SuccessResponse):
 
 class AnimeCardListOut(SuccessResponse):
     payload: AnimeCardList | None
+
+
+class DownloadHistoryOut(SuccessResponse):
+    payload: list[Download] | None
