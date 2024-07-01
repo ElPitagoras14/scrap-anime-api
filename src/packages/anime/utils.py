@@ -5,16 +5,18 @@ from .responses import (
     AnimeDownloadLinks,
     AnimeLinks,
     DownloadLink,
+    DownloadList,
     Episode,
+    SavedList,
 )
-from .schemas import Download
+from .schemas import Download, Saved
 
 
-def cast_anime_info(title: str, cover: str, finished: str, description: str):
+def cast_anime_info(name: str, cover: str, finished: str, description: str):
     is_finished = finished == "Finalizado"
     parsed_description = description.replace("\n", "").strip()
     return Anime(
-        name=title,
+        name=name,
         finished=is_finished,
         description=parsed_description,
         image_src=cover,
@@ -25,7 +27,7 @@ def cast_anime_card_list(anime_card_list: list[dict]):
     return AnimeCardList(
         items=[
             AnimeCard(
-                title=anime["title"],
+                name=anime["name"],
                 image_src=anime["cover_url"],
                 anime_id=anime["anime_id"],
             )
@@ -40,7 +42,7 @@ def cast_anime_streaming_links(anime_name: str, streaming_links: list[dict]):
         name=anime_name,
         episodes=[
             Episode(
-                name=episode["name"],
+                title=episode["title"],
                 link=episode["link"],
                 episode_id=idx + 1,
             )
@@ -50,24 +52,20 @@ def cast_anime_streaming_links(anime_name: str, streaming_links: list[dict]):
     )
 
 
-def cast_single_anime_download_link(
-    episode_name: str, download_link: str, episode_id: int
-):
+def cast_single_anime_download_link(title: str, link: str, episode_id: int):
     return DownloadLink(
-        name=episode_name,
-        link=download_link,
+        title=title,
+        link=link,
         episode_id=episode_id,
     )
 
 
-def cast_anime_download_links(download_links: list[dict]):
+def cast_anime_download_links(download_links: dict):
     return AnimeDownloadLinks(
         name=download_links["anime"],
         episodes=[
             cast_single_anime_download_link(
-                episode["name"],
-                episode["download_link"],
-                episode["episode"],
+                episode["title"], episode["download_link"], episode["episode"]
             )
             for episode in download_links["download_links"]
         ],
@@ -75,19 +73,38 @@ def cast_anime_download_links(download_links: list[dict]):
     )
 
 
-def cast_download_history(download_history: list[dict]):
-    return [
-        Download(
-            id=history.id,
-            date=history.date.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
-            file_url=history.file_url,
-            file_name=history.file_name,
-            anime=history.anime,
-            episode_id=history.episode_id,
-            description=history.description,
-            image_src=history.image_src,
-            progress=history.progress,
-            total_size=history.total_size,
-        )
-        for history in download_history
-    ]
+def cast_single_download(download: dict):
+    return Download(
+        id=download.id,
+        date=download.date.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+        file_url=download.file_url,
+        file_name=download.file_name,
+        anime=download.anime,
+        episode_id=download.episode_id,
+        title=download.title,
+        image_src=download.image_src,
+        progress=download.progress,
+        total_size=download.total_size,
+    )
+
+
+def cast_download_list(downloads: list[dict]):
+    return DownloadList(
+        items=[cast_single_download(history) for history in downloads],
+        total=len(downloads),
+    )
+
+
+def cast_single_saved_anime(saved_anime: dict):
+    return Saved(
+        animeId=saved_anime.anime_id,
+        name=saved_anime.name,
+        imageSrc=saved_anime.image_src,
+    )
+
+
+def cast_saved_anime(saved_animes: list[dict]):
+    return SavedList(
+        items=[cast_single_saved_anime(anime) for anime in saved_animes],
+        total=len(saved_animes),
+    )

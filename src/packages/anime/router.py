@@ -3,23 +3,30 @@ from fastapi import APIRouter, Response
 
 from utils.responses import InternalServerErrorResponse, SuccessResponse
 from .service import (
+    delete_all_episode_download_controller,
     get_anime_info,
-    get_download_links_controller,
-    get_single_download_link_controller,
     get_streaming_links_controller,
+    get_single_download_link_controller,
+    get_download_links_controller,
+    delete_episode_download_controller,
+    get_download_history_controller,
+    save_download_history_controller,
+    get_saved_anime_controller,
+    get_single_saved_anime_controller,
+    save_saved_anime_controller,
+    delete_saved_anime_controller,
     search_anime_query,
-    get_anime_history_controller,
-    save_anime_history_controller,
-    delete_anime_history_controller,
 )
-from .schemas import Download
+from .schemas import Download, Saved
 from .responses import (
     AnimeCardListOut,
     AnimeDownloadLinksOut,
     AnimeLinksOut,
     AnimeOut,
     DownloadLinkOut,
-    DownloadHistoryOut,
+    DownloadListOut,
+    SavedListOut,
+    SavedOut,
 )
 
 anime_router = APIRouter()
@@ -128,20 +135,20 @@ async def get_single_download_link(
 
 @anime_router.get(
     "/history",
-    response_model=Union[DownloadHistoryOut, InternalServerErrorResponse],
+    response_model=Union[DownloadListOut, InternalServerErrorResponse],
 )
-async def get_anime_history(response: Response):
+async def get_download_history(response: Response):
     try:
-        history = get_anime_history_controller()
-        return DownloadHistoryOut(
-            func="get_anime_history",
+        history = get_download_history_controller()
+        return DownloadListOut(
+            func="get_download_history",
             message="Anime history retrieved",
             payload=history,
         )
     except Exception as e:
         response.status_code = 500
         return InternalServerErrorResponse(
-            message=str(e), func="get_anime_history"
+            message=str(e), func="get_download_history"
         )
 
 
@@ -149,29 +156,49 @@ async def get_anime_history(response: Response):
     "/history",
     response_model=Union[SuccessResponse, InternalServerErrorResponse],
 )
-async def save_anime_history(anime: Download, response: Response):
+async def save_download_history(anime: Download, response: Response):
     try:
-        save_response = save_anime_history_controller(anime)
+        save_response = save_download_history_controller(anime)
         if not save_response:
             raise Exception("Error saving anime history")
         return SuccessResponse(
-            func="save_anime_history",
+            func="save_download_history",
             message="Anime history saved",
         )
     except Exception as e:
         response.status_code = 500
         return InternalServerErrorResponse(
-            message=str(e), func="save_anime_history"
+            message=str(e), func="save_download_history"
         )
 
 
 @anime_router.delete(
-    "/history/{anime_id}",
+    "/history/all",
     response_model=Union[SuccessResponse, InternalServerErrorResponse],
 )
-async def delete_anime_history(anime_id: str, response: Response):
+async def delete_all_download_history(response: Response):
     try:
-        delete_response = delete_anime_history_controller(anime_id)
+        delete_response = delete_all_episode_download_controller()
+        if not delete_response:
+            raise Exception("Error deleting anime history")
+        return SuccessResponse(
+            func="delete_all_anime_history",
+            message="Anime history deleted",
+        )
+    except Exception as e:
+        response.status_code = 500
+        return InternalServerErrorResponse(
+            message=str(e), func="delete_all_anime_history"
+        )
+
+
+@anime_router.delete(
+    "/history/single/{anime_id}",
+    response_model=Union[SuccessResponse, InternalServerErrorResponse],
+)
+async def delete_download_history(anime_id: str, response: Response):
+    try:
+        delete_response = delete_episode_download_controller(anime_id)
         if not delete_response:
             raise Exception("Error deleting anime history")
         return SuccessResponse(
@@ -182,4 +209,82 @@ async def delete_anime_history(anime_id: str, response: Response):
         response.status_code = 500
         return InternalServerErrorResponse(
             message=str(e), func="delete_anime_history"
+        )
+
+
+@anime_router.get(
+    "/saved",
+    response_model=Union[SavedListOut, InternalServerErrorResponse],
+)
+async def get_saved_anime(response: Response):
+    try:
+        saved = get_saved_anime_controller()
+        return SavedListOut(
+            func="get_saved_anime",
+            message="Saved anime retrieved",
+            payload=saved,
+        )
+    except Exception as e:
+        response.status_code = 500
+        return InternalServerErrorResponse(
+            message=str(e), func="get_saved_anime"
+        )
+
+
+@anime_router.get(
+    "/saved/{anime_id}",
+    response_model=Union[SavedOut, InternalServerErrorResponse],
+)
+async def get_single_saved_anime(anime_id: str, response: Response):
+    try:
+        saved = get_single_saved_anime_controller(anime_id)
+        return SavedOut(
+            func="get_single_saved_anime",
+            message="Saved anime retrieved",
+            payload=saved,
+        )
+    except Exception as e:
+        response.status_code = 500
+        return InternalServerErrorResponse(
+            message=str(e), func="get_single_saved_anime"
+        )
+
+
+@anime_router.post(
+    "/saved",
+    response_model=Union[SuccessResponse, InternalServerErrorResponse],
+)
+async def save_saved_anime(episode: Saved, response: Response):
+    try:
+        save_response = save_saved_anime_controller(episode)
+        if not save_response:
+            raise Exception("Error saving anime history")
+        return SuccessResponse(
+            func="save_saved_anime",
+            message="Anime saved",
+        )
+    except Exception as e:
+        response.status_code = 500
+        return InternalServerErrorResponse(
+            message=str(e), func="save_saved_anime"
+        )
+
+
+@anime_router.delete(
+    "/saved/single/{anime_id}",
+    response_model=Union[SuccessResponse, InternalServerErrorResponse],
+)
+async def delete_saved_anime(anime_id: str, response: Response):
+    try:
+        delete_response = delete_saved_anime_controller(anime_id)
+        if not delete_response:
+            raise Exception("Error deleting anime history")
+        return SuccessResponse(
+            func="delete_saved_anime",
+            message="Anime deleted",
+        )
+    except Exception as e:
+        response.status_code = 500
+        return InternalServerErrorResponse(
+            message=str(e), func="delete_saved_anime"
         )

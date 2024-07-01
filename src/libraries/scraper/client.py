@@ -30,7 +30,6 @@ async def get_streaming_links(anime):
                 episodes_box,
             )
 
-            print("Scrolling...")
             await asyncio.sleep(DELAY_TIME)
 
             numero_de_filas_actual = len(
@@ -52,8 +51,8 @@ async def get_streaming_links(anime):
             if "Next" in class_name:
                 continue
             link = ANIME_HOST + episode.find("a")["href"]
-            name = episode.find("p").text
-            links.append({"link": link, "name": name})
+            title = episode.find("p").text
+            links.append({"link": link, "title": title})
         links.reverse()
         return links
 
@@ -126,13 +125,12 @@ async def get_download_links(episode_links, episodes_range=None):
             episode_link = episode_links[episode_id - 1]["link"]
             download_link = await get_single_download_link(episode_link, driver)
             if not download_link:
-                final_download_links.append(None)
                 continue
             final_download_links.append(
                 {
                     "episode": episode_id,
                     "download_link": download_link,
-                    "name": episode_links[episode_id - 1]["name"],
+                    "title": episode_links[episode_id - 1]["title"],
                 }
             )
         anime_download_info = {

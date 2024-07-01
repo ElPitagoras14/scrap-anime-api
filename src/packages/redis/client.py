@@ -6,7 +6,7 @@ REDIST_HOST = redis_settings.HOST
 REDIS_PORT = redis_settings.PORT
 
 
-redis = get_redis_connection(
+redis_client = get_redis_connection(
     host=REDIST_HOST,
     port=REDIS_PORT,
     password=None,

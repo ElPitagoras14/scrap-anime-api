@@ -1,14 +1,21 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
 
 from utils.responses import SuccessResponse
 
-from .schemas import Download
+from .schemas import Download, Saved
 
 
 class DownloadLink(BaseModel):
-    name: str
+    title: str
     link: str
     episode_id: int
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+    )
 
 
 class AnimeDownloadLinks(BaseModel):
@@ -18,9 +25,15 @@ class AnimeDownloadLinks(BaseModel):
 
 
 class Episode(BaseModel):
-    name: str
+    title: str
     link: str
     episode_id: int
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+    )
 
 
 class AnimeLinks(BaseModel):
@@ -39,11 +52,23 @@ class Anime(BaseModel):
     description: str
     image_src: str
 
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+    )
+
 
 class AnimeCard(BaseModel):
-    title: str
+    name: str
     image_src: str
     anime_id: str
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+    )
 
 
 class AnimeCardList(BaseModel):
@@ -67,5 +92,23 @@ class AnimeCardListOut(SuccessResponse):
     payload: AnimeCardList | None
 
 
-class DownloadHistoryOut(SuccessResponse):
-    payload: list[Download] | None
+class DownloadList(BaseModel):
+    items: list[Download]
+    total: int
+
+
+class DownloadListOut(SuccessResponse):
+    payload: DownloadList | None
+
+
+class SavedOut(SuccessResponse):
+    payload: Saved | None
+
+
+class SavedList(BaseModel):
+    items: list[Saved]
+    total: int
+
+
+class SavedListOut(SuccessResponse):
+    payload: SavedList | None

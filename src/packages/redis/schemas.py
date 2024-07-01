@@ -1,30 +1,32 @@
 from datetime import datetime
-from enum import Enum
 from redis_om import HashModel, Field, Migrator
 
-from .client import redis
-
-
-class DownloadType(str, Enum):
-    QUEUE = "queue"
-    HISTORY = "history"
+from .client import redis_client
 
 
 class DownloadRedis(HashModel):
     id: str = Field(primary_key=True)
     date: datetime = Field(index=True)
-    type: DownloadType = Field(index=True)
     file_url: str
     file_name: str
     anime: str = Field(index=True)
     episode_id: int
-    description: str
+    title: str
     image_src: str
     progress: int
     total_size: int
 
     class Meta:
-        database = redis
+        database = redis_client
+
+
+class SavedRedis(HashModel):
+    anime_id: str = Field(primary_key=True, index=True)
+    name: str
+    image_src: str
+
+    class Meta:
+        database = redis_client
 
 
 Migrator().run()

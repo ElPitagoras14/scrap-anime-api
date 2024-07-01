@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 
 docker-compose.yaml
+data/
 
 # C extensions
 *.so
