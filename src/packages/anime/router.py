@@ -218,7 +218,7 @@ async def delete_download_history(anime_id: str, response: Response):
 )
 async def get_saved_anime(response: Response):
     try:
-        saved = get_saved_anime_controller()
+        saved = await get_saved_anime_controller()
         return SavedListOut(
             func="get_saved_anime",
             message="Saved anime retrieved",
@@ -237,7 +237,7 @@ async def get_saved_anime(response: Response):
 )
 async def get_single_saved_anime(anime_id: str, response: Response):
     try:
-        saved = get_single_saved_anime_controller(anime_id)
+        saved = await get_single_saved_anime_controller(anime_id)
         return SavedOut(
             func="get_single_saved_anime",
             message="Saved anime retrieved",
@@ -254,9 +254,9 @@ async def get_single_saved_anime(anime_id: str, response: Response):
     "/saved",
     response_model=Union[SuccessResponse, InternalServerErrorResponse],
 )
-async def save_saved_anime(episode: Saved, response: Response):
+async def save_saved_anime(anime: Saved, response: Response):
     try:
-        save_response = save_saved_anime_controller(episode)
+        save_response = await save_saved_anime_controller(anime)
         if not save_response:
             raise Exception("Error saving anime history")
         return SuccessResponse(

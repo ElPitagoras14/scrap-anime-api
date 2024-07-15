@@ -1,6 +1,8 @@
 import asyncio
 from bs4 import BeautifulSoup
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 from .utils import DELAY_TIME, ChromeDriverContext, parse_episode_range
 from .tab_links import get_sw_link, get_yourupload_link
@@ -21,7 +23,7 @@ async def get_streaming_links(anime):
 
         episodes_box = driver.find_element(By.ID, "episodeList")
         while True:
-            numero_de_filas_anterior = len(
+            previous_rows_len = len(
                 episodes_box.find_elements(By.TAG_NAME, "li")
             )
 
@@ -32,11 +34,11 @@ async def get_streaming_links(anime):
 
             await asyncio.sleep(DELAY_TIME)
 
-            numero_de_filas_actual = len(
+            current_row_len = len(
                 episodes_box.find_elements(By.TAG_NAME, "li")
             )
 
-            if numero_de_filas_actual == numero_de_filas_anterior:
+            if current_row_len == previous_rows_len:
                 break
 
         page_source = driver.page_source
@@ -123,7 +125,9 @@ async def get_download_links(episode_links, episodes_range=None):
         )
         for episode_id in episodes:
             episode_link = episode_links[episode_id - 1]["link"]
-            download_link = await get_single_download_link(episode_link, driver)
+            download_link = await get_single_download_link(
+                episode_link, driver
+            )
             if not download_link:
                 continue
             final_download_links.append(
@@ -138,3 +142,27 @@ async def get_download_links(episode_links, episodes_range=None):
             "download_links": final_download_links,
         }
         return anime_download_info
+
+
+async def get_emission_date(anime):
+    with ChromeDriverContext() as driver:
+        driver.get(ANIME_HOST + f"/anime/{anime}")
+        driver.implicitly_wait(1)
+
+        episodes_box = WebDriverWait(driver, 30).until(
+            EC.presence_of_element_located((By.ID, "episodeList"))
+        )
+        current_rows_len = len(episodes_box.find_elements(By.TAG_NAME, "li"))
+        while current_rows_len == 0:
+            current_rows_len = len(
+                WebDriverWait(episodes_box, 30).until(
+                    EC.presence_of_all_elements_located((By.TAG_NAME, "li"))
+                )
+            )
+            await asyncio.sleep(DELAY_TIME)
+
+        page_source = episodes_box.get_attribute("outerHTML")
+        soup = BeautifulSoup(page_source, "html.parser")
+        week_day = soup.find_all("li")[0].find("span").text
+
+        return week_day

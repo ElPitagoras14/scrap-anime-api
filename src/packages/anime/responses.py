@@ -51,6 +51,7 @@ class Anime(BaseModel):
     finished: bool
     description: str
     image_src: str
+    week_day: str | None
 
     model_config = ConfigDict(
         alias_generator=to_camel,

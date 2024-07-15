@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from .responses import (
     Anime,
     AnimeCard,
@@ -12,14 +14,21 @@ from .responses import (
 from .schemas import Download, Saved
 
 
-def cast_anime_info(name: str, cover: str, finished: str, description: str):
+def cast_anime_info(
+    name: str, cover: str, finished: str, description: str, emission_date: str
+):
     is_finished = finished == "Finalizado"
     parsed_description = description.replace("\n", "").strip()
+    week_day = None
+    if emission_date:
+        week_day = datetime.strptime(emission_date, "%Y-%m-%d")
+        week_day = week_day.strftime("%A")
     return Anime(
         name=name,
         finished=is_finished,
         description=parsed_description,
         image_src=cover,
+        weekDay=week_day,
     )
 
 
@@ -100,10 +109,11 @@ def cast_single_saved_anime(saved_anime: dict):
         animeId=saved_anime.anime_id,
         name=saved_anime.name,
         imageSrc=saved_anime.image_src,
+        weekDay=saved_anime.week_day,
     )
 
 
-def cast_saved_anime(saved_animes: list[dict]):
+def cast_saved_anime_list(saved_animes: list[dict]):
     return SavedList(
         items=[cast_single_saved_anime(anime) for anime in saved_animes],
         total=len(saved_animes),

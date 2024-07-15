@@ -7,9 +7,9 @@ from libraries.scraper import (
     get_streaming_links,
     get_download_links,
     get_single_episode_download_link,
+    get_emission_date,
 )
-from packages.redis.schemas import SavedRedis
-from ..redis import DownloadRedis, redis_client
+from ..redis import DownloadRedis, redis_client, SavedRedis
 
 from .config import anime_settings
 from .utils import (
@@ -17,7 +17,7 @@ from .utils import (
     cast_anime_download_links,
     cast_anime_info,
     cast_anime_streaming_links,
-    cast_saved_anime,
+    cast_saved_anime_list,
     cast_single_anime_download_link,
     cast_download_list,
     cast_single_saved_anime,
@@ -56,8 +56,11 @@ async def get_anime_info(anime: str):
             cover_url = HOST + cover
             finished = soup.find_all("p", class_="AnmStts")[0].text
             description = soup.find_all("div", class_="Description")[0].text
+            emission_date = None
+            if finished == "En emision":
+                emission_date = await get_emission_date(anime)
             anime_info = cast_anime_info(
-                name, cover_url, finished, description
+                name, cover_url, finished, description, emission_date
             )
             return anime_info
 
@@ -149,23 +152,28 @@ def delete_episode_download_controller(anime_id: str):
     return exists == 0
 
 
-def get_saved_anime_controller():
+async def get_saved_anime_controller():
     saved = SavedRedis.find().all()
-    return cast_saved_anime(saved)
+    return cast_saved_anime_list(saved)
 
 
-def get_single_saved_anime_controller(anime_id: str):
+async def get_single_saved_anime_controller(anime_id: str):
     saved = SavedRedis.find(SavedRedis.anime_id == anime_id).all()
     if saved:
         saved = saved[0]
     return cast_single_saved_anime(saved) if saved else None
 
 
-def save_saved_anime_controller(anime: Saved):
+async def save_saved_anime_controller(anime: Saved):
+    week_day = anime.week_day
+    if not week_day:
+        anime_info = await get_anime_info(anime.anime_id)
+        week_day = anime_info.week_day
     saved_redis = SavedRedis(
         anime_id=anime.anime_id,
         name=anime.name,
         image_src=anime.image_src,
+        week_day=str(week_day),
     )
     saved_redis.save()
     exists = SavedRedis.find(SavedRedis.anime_id == anime.anime_id).count()
