@@ -11,7 +11,7 @@ curr_workspace = os.getcwd()
 
 
 logger = logging.getLogger("scraper")
-file_handler = logging.FileHandler(f"{curr_workspace}/logs/scraper.log")
+file_handler = logging.FileHandler(f"{curr_workspace}/scraper.log")
 file_handler.setFormatter(
     logging.Formatter(
         fmt="%(name)s | %(levelname)s | %(asctime)s | %(message)s",
