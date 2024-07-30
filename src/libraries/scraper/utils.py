@@ -5,6 +5,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 from .config import scraper_settings
 
 DELAY_TIME = 7
+WEBDRIVER_DELAY = 30
 
 IN_DOCKER = scraper_settings.IN_DOCKER
 

@@ -1,23 +1,58 @@
 import asyncio
+import logging
+import uuid
 from bs4 import BeautifulSoup
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-from .utils import DELAY_TIME, ChromeDriverContext, parse_episode_range
+from .utils import (
+    DELAY_TIME,
+    WEBDRIVER_DELAY,
+    ChromeDriverContext,
+    parse_episode_range,
+)
 from .tab_links import get_sw_link, get_yourupload_link
 from .table_links import get_streamtape_download_link
 from .config import scraper_settings
 
-unuseful_tabs = ["Mega"]
+ANIME_HOST = scraper_settings.HOST
+
+preference_order_tabs = [
+    "SW",
+    "YourUpload",
+]
 role_value = "tablist"
 xpath_expression = f'//*[@role="{role_value}"]'
 
-ANIME_HOST = scraper_settings.HOST
+fn_get_tab_download_link = {
+    "SW": get_sw_link,
+    "YourUpload": get_yourupload_link,
+}
+
+semaphore = asyncio.Semaphore(6)
+logging.basicConfig(
+    format="%(name)s | %(levelname)s | %(asctime)s | %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%SZ",
+)
+logger = logging.getLogger("scraper")
 
 
-async def get_streaming_links(anime):
+def get_order_idx(preference_order_tabs, current_tabs):
+    current_tabs = {tab: idx for idx, tab in enumerate(current_tabs)}
+
+    order_idx = []
+    for tab in preference_order_tabs:
+        if tab in current_tabs:
+            order_idx.append(current_tabs[tab])
+
+    return order_idx
+
+
+async def async_get_streaming_links(anime):
+    uuid_str = str(uuid.uuid4())
     with ChromeDriverContext() as driver:
+        logger.debug(f"{uuid_str} | Getting streaming links for {anime}")
         driver.get(ANIME_HOST + f"/anime/{anime}")
         driver.implicitly_wait(1)
 
@@ -56,113 +91,160 @@ async def get_streaming_links(anime):
             title = episode.find("p").text
             links.append({"link": link, "title": title})
         links.reverse()
+        logger.debug(
+            f"{uuid_str} | Found {len(links)} streaming links for {anime}"
+        )
         return links
 
 
-async def get_single_episode_download_link(episode_link):
-    with ChromeDriverContext() as driver:
-        return await get_single_download_link(episode_link, driver)
+def sync_get_streaming_links(anime):
+    return asyncio.run(async_get_streaming_links(anime))
 
 
-async def get_single_download_link(episode_link, driver):
-    driver.switch_to.window(driver.window_handles[0])
-    driver.get(episode_link)
-    driver.implicitly_wait(1)
-
-    page_source = driver.page_source
-    test_soup = BeautifulSoup(page_source, "html.parser")
-
-    download_table = test_soup.find(class_="Dwnl")
-    download_links = download_table.find_all("a")
-
-    for link in download_links:
-        if "mega" in link["href"] or "fichier" in link["href"]:
-            continue
-        if "streamtape" in link["href"]:
-            parsed_link = await get_streamtape_download_link(
-                driver, link["href"]
+async def async_get_single_episode_download_link(
+    episode_link, uuid_str=str(uuid.uuid4())
+):
+    async with semaphore:
+        anime_episode_name = episode_link.split("/")[-1]
+        with ChromeDriverContext() as driver:
+            logger.debug(
+                f"{uuid_str} | Getting download link for {anime_episode_name}"
             )
-            if not parsed_link:
-                continue
-            return parsed_link
+            driver.switch_to.window(driver.window_handles[0])
+            driver.get(episode_link)
+            driver.implicitly_wait(1)
 
-    driver.switch_to.window(driver.window_handles[0])
-    navbar = driver.find_element(By.XPATH, xpath_expression)
-    nav_tabs = navbar.find_elements(By.TAG_NAME, "li")
+            page_source = driver.page_source
+            test_soup = BeautifulSoup(page_source, "html.parser")
 
-    for nav_tab in nav_tabs:
-        driver.switch_to.window(driver.window_handles[0])
-        title = nav_tab.get_attribute("title")
-        if title in unuseful_tabs:
-            continue
+            download_table = test_soup.find(class_="Dwnl")
+            download_links = download_table.find_all("a")
 
-        link = nav_tab.find_element(By.TAG_NAME, "a")
-        link.click()
+            driver.switch_to.window(driver.window_handles[0])
+            navbar = driver.find_element(By.XPATH, xpath_expression)
+            nav_tabs = navbar.find_elements(By.TAG_NAME, "li")
 
-        if title == "SW":
-            src_link = await get_sw_link(driver)
-            if not src_link:
-                continue
-            return src_link
+            titles = [nav_tab.get_attribute("title") for nav_tab in nav_tabs]
+            order_idx = get_order_idx(preference_order_tabs, titles)
 
-        if title == "YourUpload":
-            src_link = await get_yourupload_link(driver)
-            if not src_link:
-                continue
-            return src_link
+            for idx in order_idx:
+                try:
+                    nav_tab = nav_tabs[idx]
+                    driver.switch_to.window(driver.window_handles[0])
+                    title = nav_tab.get_attribute("title")
+
+                    link = nav_tab.find_element(By.TAG_NAME, "a")
+                    link.click()
+
+                    if title in fn_get_tab_download_link:
+                        curr_fn = fn_get_tab_download_link[title]
+                        src_link = await curr_fn(driver)
+                        if not src_link:
+                            continue
+                        logger.debug(
+                            f"{uuid_str} | Found link for {anime_episode_name} "
+                            + f"at service {title}"
+                        )
+                        return src_link
+                except Exception as e:
+                    logger.error(
+                        f"{uuid_str} | Error for {anime_episode_name}: {e}"
+                    )
+                    continue
+
+            for link in download_links:
+                try:
+                    if "mega" in link["href"] or "fichier" in link["href"]:
+                        continue
+                    if "streamtape" in link["href"]:
+                        parsed_link = await get_streamtape_download_link(
+                            driver, link["href"]
+                        )
+                        if not parsed_link:
+                            continue
+                        logger.debug(
+                            f"{uuid_str} | Found link for {anime_episode_name} "
+                            + "at service Streamtape"
+                        )
+                        return parsed_link
+                except Exception as e:
+                    logger.error(
+                        f"{uuid_str} | Error for {anime_episode_name}: {e}"
+                    )
+                    continue
 
 
-async def get_download_links(episode_links, episodes_range=None):
+def sync_get_single_episode_download_link(episode_link):
+    return asyncio.run(async_get_single_episode_download_link(episode_link))
+
+
+async def async_get_download_links(episode_links, episodes_range=None):
+    uuid_str = str(uuid.uuid4())
     episodes = (
         await parse_episode_range(episodes_range)
         if episodes_range
         else range(1, len(episode_links) + 1)
     )
-    with ChromeDriverContext() as driver:
-        final_download_links = []
-        anime = "-".join(
-            episode_links[0]["link"].split("/")[-1].split("-")[:-1]
+    logger.debug(
+        f"{uuid_str} | Getting download links for episodes {episodes}"
+    )
+    final_download_links = []
+    tasks = []
+    anime = "-".join(episode_links[0]["link"].split("/")[-1].split("-")[:-1])
+    for episode_id in episodes:
+        episode_link = episode_links[episode_id - 1]["link"]
+        download_link_task = asyncio.create_task(
+            async_get_single_episode_download_link(episode_link, uuid_str)
         )
-        for episode_id in episodes:
-            episode_link = episode_links[episode_id - 1]["link"]
-            download_link = await get_single_download_link(
-                episode_link, driver
-            )
-            if not download_link:
-                continue
-            final_download_links.append(
-                {
-                    "episode": episode_id,
-                    "download_link": download_link,
-                    "title": episode_links[episode_id - 1]["title"],
-                }
-            )
-        anime_download_info = {
-            "anime": anime,
-            "download_links": final_download_links,
-        }
-        return anime_download_info
+        tasks.append(download_link_task)
+
+    results = await asyncio.gather(*tasks)
+    for result in results:
+        if result:
+            final_download_links.append(result)
+
+    anime_download_info = {
+        "anime": anime,
+        "download_links": final_download_links,
+    }
+    logger.debug(
+        f"{uuid_str} | Found {len(final_download_links)} "
+        + f"download links for {anime}"
+    )
+    return anime_download_info
 
 
-async def get_emission_date(anime):
+def sync_get_download_links(episode_links, episodes_range=None):
+    return asyncio.run(async_get_download_links(episode_links, episodes_range))
+
+
+async def async_get_emission_date(anime):
+    uuid_str = str(uuid.uuid4())
     with ChromeDriverContext() as driver:
+        logger.debug(f"{uuid_str} | Getting emission date for {anime}")
         driver.get(ANIME_HOST + f"/anime/{anime}")
         driver.implicitly_wait(1)
 
-        episodes_box = WebDriverWait(driver, 30).until(
+        episodes_box = WebDriverWait(driver, WEBDRIVER_DELAY).until(
             EC.presence_of_element_located((By.ID, "episodeList"))
         )
         current_rows_len = len(episodes_box.find_elements(By.TAG_NAME, "li"))
         while current_rows_len == 0:
             current_rows_len = len(
-                WebDriverWait(episodes_box, 30).until(
+                WebDriverWait(episodes_box, WEBDRIVER_DELAY).until(
                     EC.presence_of_all_elements_located((By.TAG_NAME, "li"))
                 )
             )
-            await asyncio.sleep(DELAY_TIME)
 
         page_source = episodes_box.get_attribute("outerHTML")
         soup = BeautifulSoup(page_source, "html.parser")
         week_day = soup.find_all("li")[0].find("span").text
+        logger.debug(
+            f"{uuid_str} | Found emission date for {anime}: {week_day}"
+        )
 
         return week_day
+
+
+def sync_get_emission_date(anime):
+    return asyncio.run(async_get_emission_date(anime))
