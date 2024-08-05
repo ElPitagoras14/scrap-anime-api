@@ -35,7 +35,7 @@ logging.basicConfig(
     format="%(name)s | %(levelname)s | %(asctime)s | %(message)s",
     datefmt="%Y-%m-%dT%H:%M:%SZ",
 )
-logger = logging.getLogger("scraper")
+logger = logging.getLogger(__name__)
 
 
 def get_order_idx(preference_order_tabs, current_tabs):
@@ -49,8 +49,7 @@ def get_order_idx(preference_order_tabs, current_tabs):
     return order_idx
 
 
-async def async_get_streaming_links(anime):
-    uuid_str = str(uuid.uuid4())
+async def async_get_streaming_links(anime, uuid_str=str(uuid.uuid4())):
     with ChromeDriverContext() as driver:
         logger.debug(f"{uuid_str} | Getting streaming links for {anime}")
         driver.get(ANIME_HOST + f"/anime/{anime}")
@@ -178,8 +177,9 @@ def sync_get_single_episode_download_link(episode_link):
     return asyncio.run(async_get_single_episode_download_link(episode_link))
 
 
-async def async_get_download_links(episode_links, episodes_range=None):
-    uuid_str = str(uuid.uuid4())
+async def async_get_download_links(
+    episode_links, episodes_range=None, uuid_str=str(uuid.uuid4())
+):
     episodes = (
         await parse_episode_range(episodes_range)
         if episodes_range
@@ -218,8 +218,7 @@ def sync_get_download_links(episode_links, episodes_range=None):
     return asyncio.run(async_get_download_links(episode_links, episodes_range))
 
 
-async def async_get_emission_date(anime):
-    uuid_str = str(uuid.uuid4())
+async def async_get_emission_date(anime, uuid_str=str(uuid.uuid4())):
     with ChromeDriverContext() as driver:
         logger.debug(f"{uuid_str} | Getting emission date for {anime}")
         driver.get(ANIME_HOST + f"/anime/{anime}")

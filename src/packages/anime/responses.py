@@ -3,7 +3,7 @@ from pydantic.alias_generators import to_camel
 
 from utils.responses import SuccessResponse
 
-from .schemas import Download, Saved
+from .schemas import Saved
 
 
 class DownloadLink(BaseModel):
@@ -91,15 +91,6 @@ class AnimeOut(SuccessResponse):
 
 class AnimeCardListOut(SuccessResponse):
     payload: AnimeCardList | None
-
-
-class DownloadList(BaseModel):
-    items: list[Download]
-    total: int
-
-
-class DownloadListOut(SuccessResponse):
-    payload: DownloadList | None
 
 
 class SavedOut(SuccessResponse):
