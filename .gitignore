@@ -3,11 +3,11 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-docker-compose.yaml
 data/
 
 # C extensions
 *.so
+src/output/
 
 # Distribution / packaging
 .Python
@@ -115,7 +115,6 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
 .venv
 env/
 venv/

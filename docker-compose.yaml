@@ -9,8 +9,8 @@ services:
       - PORT=8000
       - DEBUG=True
       - APP_NAME=main:app
-      - IN_DOCKER=True
-      - ANIME_HOST=
+      - ANIME_IN_DOCKER=True
+      - ANIME_HOST=https://www3.animeflv.net
       - REDIS_HOST=redis-stack
       - REDIS_PORT=6379
     depends_on:
@@ -21,3 +21,8 @@ services:
     image: redis/redis-stack:latest
     ports:
       - "6379:6379"
+    volumes:
+      - ./data/redis:/data
+
+volumes:
+  redis-data:

@@ -57,7 +57,7 @@ def get_anime_cards(page: str):
     return anime_list
 
 
-async def get_anime_info(anime: str):
+async def get_anime_info(anime: str, uuid_str: str):
     async with aiohttp.ClientSession() as session:
         async with session.get(HOST + f"/anime/{anime}") as response:
             page = await response.text()
@@ -75,6 +75,7 @@ async def get_anime_info(anime: str):
             anime_info = cast_anime_info(
                 name, cover_url, finished, description, emission_date
             )
+            logger.info(f"{uuid_str} | Found anime information for {anime}")
             return anime_info
 
 
@@ -127,7 +128,15 @@ async def get_download_links_controller(
         f"{uuid_str} | Found {len(download_links['download_links'])} "
         + f"download links for {download_links['anime']}"
     )
-    return cast_anime_download_links(download_links)
+    filtered_links = {
+        "anime": download_links["anime"],
+        "download_links": [
+            episode
+            for episode in download_links["download_links"]
+            if episode["download_link"]
+        ],
+    }
+    return cast_anime_download_links(filtered_links)
 
 
 async def get_single_download_link_controller(
@@ -143,6 +152,8 @@ async def get_single_download_link_controller(
         f"{uuid_str} | Found download link for {name} "
         + f"episode {episode_id}: {download_link}"
     )
+    if not download_link:
+        return None
     return cast_single_anime_download_link(name, download_link, episode_id)
 
 
@@ -163,7 +174,7 @@ async def get_single_saved_anime_controller(anime_id: str, uuid_str: str):
 async def save_saved_anime_controller(anime: Saved, uuid_str: str):
     week_day = anime.week_day
     if not week_day:
-        anime_info = await get_anime_info(anime.anime_id)
+        anime_info = await get_anime_info(anime.anime_id, uuid_str)
         week_day = anime_info.week_day
     saved_redis = SavedRedis(
         anime_id=anime.anime_id,

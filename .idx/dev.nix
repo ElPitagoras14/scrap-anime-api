@@ -52,7 +52,7 @@
       };
       # Runs when the workspace is (re)started
       onStart = {
-        startRedis = "docker-compose up -d redis-stack";
+        # startRedis = "docker-compose up -d redis-stack";
       };
     };
   };
