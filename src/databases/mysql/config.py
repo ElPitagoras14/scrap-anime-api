@@ -3,15 +3,19 @@ from pydantic_settings import BaseSettings
 from pydantic_settings import SettingsConfigDict
 
 
-class AnimeSettings(BaseSettings):
+class MysqlSettings(BaseSettings):
     HOST: str
+    USER: str
+    PASS: str
+    PORT: int
+    DATABASE: str
 
     model_config = SettingsConfigDict(
         env_file=find_dotenv(filename=".env", usecwd=True),
         env_file_encoding="utf-8",
         extra="ignore",
-        env_prefix="ANIME_",
+        env_prefix="MYSQL_",
     )
 
 
-anime_settings = AnimeSettings()
+mysql_settings = MysqlSettings()

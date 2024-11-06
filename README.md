@@ -21,6 +21,7 @@ Anime Scraper API is a project built with FastAPI to scrape anime data and downl
    git clone https://github.com/ElPitagoras14/scrap-anime-api.git
    cd scrap-anime-api
    ```
+
 2. Build the image:
 
    ```bash

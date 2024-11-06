@@ -1,29 +1,55 @@
-import logging
-import os
+import uuid
 import uvicorn
-from fastapi import FastAPI
+from jose import JWTError, jwt
+from loguru import logger
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from config import general_settings
+from databases.mysql.client import DatabaseSession
+from databases.mysql.models import User
 from routes import router
+from log import configure_logs
+from contextlib import asynccontextmanager
+from watchgod import run_process
 
-curr_workspace = os.getcwd()
-parent_dir = os.path.dirname(curr_workspace)
+from packages.auth import get_password_hash
 
-root_logger = logging.getLogger()
-file_handler = logging.FileHandler(f"{parent_dir}/anime-scraper.log")
-file_handler.setFormatter(
-    logging.Formatter(
-        fmt="%(name)s | %(levelname)s | %(asctime)s | %(message)s",
-        datefmt="%Y-%m-%dT%H:%M:%SZ",
-    )
-)
-root_logger.setLevel(logging.INFO)
-root_logger.addHandler(file_handler)
+HOST = general_settings.HOST
+PORT = general_settings.PORT
+APP_NAME = general_settings.APP_NAME
+SECRET_KEY = general_settings.AUTH_SECRET_KEY
+ALGORITHM = general_settings.AUTH_ALGORITHM
+
+configure_logs()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    with DatabaseSession() as db:
+        root_user = db.query(User).filter(User.username == "root").first()
+        if not root_user:
+            hashed_password = get_password_hash("root")
+            root_user = User(
+                username="root",
+                password=hashed_password,
+                is_admin=True,
+                is_active=True,
+            )
+            db.add(root_user)
+            db.commit()
+            db.refresh(root_user)
+    try:
+        yield
+    finally:
+        logger.remove("request_id")
+        logger.remove("user")
+
 
 app = FastAPI(
     title="Anime Scraper API",
     description="Scraper for anime data and download links.",
-    version="1.0.0",
+    version="2.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -34,12 +60,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(router, prefix="/api/v1")
+
+@app.middleware("http")
+async def add_logging_context(request: Request, call_next):
+    request_id = str(uuid.uuid4())
+    request.state.request_id = request_id
+    user = None
+    token = request.headers.get("Authorization")
+    if token:
+        token = token.split(" ")[-1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            user = payload.get("sub")
+        except JWTError:
+            user = None
+    if user:
+        user = user
+    with logger.contextualize(request_id=request_id, user=user):
+        response = await call_next(request)
+
+    return response
+
+
+app.include_router(router, prefix="/api/v2")
+
+
+def start():
+    uvicorn.run(app=APP_NAME, host=HOST, port=PORT, reload=False)
 
 
 if __name__ == "__main__":
-    HOST = general_settings.HOST
-    PORT = general_settings.PORT
-    DEBUG = general_settings.DEBUG
-    APP_NAME = general_settings.APP_NAME
-    uvicorn.run(app=APP_NAME, host=HOST, port=PORT, reload=DEBUG)
+    run_process(".", start)

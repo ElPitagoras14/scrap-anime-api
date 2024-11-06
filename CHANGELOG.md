@@ -1,11 +1,11 @@
 # Changelog
 
-## [Unreleased]
+## [2.0.0] - 2024-11-07
 
 ### Added
 
 - Integration of Playwright as the new scraping manager, replacing Selenium.
-- Integration of Luguru as the new logger, replacing the built-in logger.
+- Integration of Loguru as the new logger, replacing the built-in logger.
 - New MySQL database for cache and user management, replacing Redis.
 - Authentication and login for users.
 
