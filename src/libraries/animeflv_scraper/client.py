@@ -170,8 +170,7 @@ async def get_single_episode_download_link(
                         )
                         return {"service": "streamtape", "link": parsed_link}
 
-                except Exception as e:
-                    logger.error(f"Error getting download link: {e}")
+                except Exception:
                     continue
 
             for idx in order_idx:
@@ -200,8 +199,7 @@ async def get_single_episode_download_link(
                         + f"at service {service}"
                     )
                     return {"service": service, "link": download_link}
-                except Exception as e:
-                    logger.error(f"Error getting download link: {e}")
+                except Exception:
                     continue
 
             await context.close()

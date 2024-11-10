@@ -21,6 +21,7 @@ def login_controller(username: str, password: str):
                 "username": user.username,
                 "is_active": user.is_active,
                 "is_admin": user.is_admin,
+                "profile_img": user.profile_img,
             }
         )
 

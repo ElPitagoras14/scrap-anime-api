@@ -12,8 +12,11 @@ from utils.responses import (
 from .service import login_controller, register_controller
 from .responses import TokenOut
 from .schemas import AuthInfo
+from .config import auth_settings
 
 auth_router = APIRouter()
+
+EXPIRE_MINUTES = auth_settings.EXPIRE_MINUTES
 
 
 @auth_router.post(

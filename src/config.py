@@ -8,6 +8,9 @@ class GeneralSettings(BaseSettings):
     PORT: int
     APP_NAME: str
 
+    APP_ADMIN_USER: str
+    APP_ADMIN_PASS: str
+
     LOG_APP_PATH: str
     LOG_ERROR_PATH: str
 

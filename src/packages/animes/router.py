@@ -4,7 +4,7 @@ from typing import Union
 from fastapi import APIRouter, Request, Response
 from loguru import logger
 
-from utils.responses import InternalServerErrorResponse
+from utils.responses import InternalServerErrorResponse, ConflictResponse
 from .service import (
     get_anime_info_controller,
     get_streaming_links_controller,
@@ -96,8 +96,18 @@ async def get_anime_streaming_links(
     request_id = request.state.request_id
     try:
         logger.info(f"Getting anime stream links for {anime}")
-        anime_links = await get_streaming_links_controller(anime)
+        success, value = await get_streaming_links_controller(anime)
         process_time = time.time() - start_time
+        if not success:
+            logger.error(
+                f"Error getting anime stream links for {anime}: {value}"
+            )
+            response.status_code = 409
+            return ConflictResponse(
+                request_id=request_id,
+                message=value,
+                func="get_anime_streaming_links",
+            )
         logger.info(
             f"Got anime stream links for {anime} in {process_time:.2f} seconds"
         )
@@ -106,7 +116,7 @@ async def get_anime_streaming_links(
             process_time=process_time,
             func="get_anime_streaming_links",
             message="Anime links retrieved",
-            payload=anime_links,
+            payload=value,
         )
     except Exception as e:
         logger.error(f"Error getting anime stream links for {anime}: {e}")
@@ -184,6 +194,10 @@ async def get_single_episode_download_link(
             episode_link, episode_id
         )
         process_time = time.time() - start_time
+        logger.info(
+            f"Got single download link for {episode_link} "
+            + f"in {process_time:.2f} seconds"
+        )
         return AnimeDownloadLinkOut(
             request_id=request_id,
             process_time=process_time,

@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.1] - 2024-11-10
+
+### Added
+
+- Environment variables to manage some code variables.
+- `profile_img` variable to jwt token.
+
+### Changed
+
+- Rewriting of `README.md`.
+
 ## [2.0.0] - 2024-11-07
 
 ### Added

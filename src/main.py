@@ -19,6 +19,8 @@ PORT = general_settings.PORT
 APP_NAME = general_settings.APP_NAME
 SECRET_KEY = general_settings.AUTH_SECRET_KEY
 ALGORITHM = general_settings.AUTH_ALGORITHM
+APP_ADMIN_USER = general_settings.APP_ADMIN_USER
+APP_ADMIN_PASS = general_settings.APP_ADMIN_PASS
 
 configure_logs()
 
@@ -26,11 +28,13 @@ configure_logs()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     with DatabaseSession() as db:
-        root_user = db.query(User).filter(User.username == "root").first()
+        root_user = (
+            db.query(User).filter(User.username == APP_ADMIN_USER).first()
+        )
         if not root_user:
-            hashed_password = get_password_hash("root")
+            hashed_password = get_password_hash(APP_ADMIN_PASS)
             root_user = User(
-                username="root",
+                username=APP_ADMIN_USER,
                 password=hashed_password,
                 is_admin=True,
                 is_active=True,
@@ -67,6 +71,7 @@ async def add_logging_context(request: Request, call_next):
     request.state.request_id = request_id
     user = None
     token = request.headers.get("Authorization")
+    print(token)
     if token:
         token = token.split(" ")[-1]
         try:

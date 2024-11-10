@@ -157,7 +157,7 @@ async def get_streaming_links_controller(anime_name: str):
         last_episode = None
         anime = db.query(Anime).filter(Anime.id == anime_name).first()
         if not anime:
-            await get_anime_info_controller(anime_name)
+            return False, "Anime not found. Please search the anime info first."
 
     with DatabaseSession() as db:
         anime = db.query(Anime).filter(Anime.id == anime_name).first()
@@ -197,7 +197,7 @@ async def get_streaming_links_controller(anime_name: str):
         logger.info(
             f"Found {len(streaming_links)} streaming links for {anime.name}"
         )
-        return cast_anime_streaming_links(anime.name, streaming_links)
+        return True, cast_anime_streaming_links(anime.name, streaming_links)
 
 
 async def get_range_episodes_download_links_controller(
