@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0] - 2024-11-12
+
+### Added
+
+- Save Anime Feature
+- Keys for Anime and AnimeCard schema
+
 ## [2.0.1] - 2024-11-10
 
 ### Added

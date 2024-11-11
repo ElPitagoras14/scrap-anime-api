@@ -71,7 +71,6 @@ async def add_logging_context(request: Request, call_next):
     request.state.request_id = request_id
     user = None
     token = request.headers.get("Authorization")
-    print(token)
     if token:
         token = token.split(" ")[-1]
         try:

@@ -30,11 +30,22 @@ users_router = APIRouter()
     "",
     response_model=Union[UserListOut, InternalServerErrorResponse],
 )
-async def get_all_users(request: Request, response: Response):
+async def get_all_users(
+    request: Request,
+    response: Response,
+    current_user: dict = Depends(get_current_user),
+):
     start_time = time.time()
     request_id = request.state.request_id
     try:
         logger.info("Getting users")
+        if not current_user["is_admin"]:
+            response.status_code = 403
+            return ConflictResponse(
+                request_id=request_id,
+                func="change_user_status",
+                message="Unauthorized",
+            )
         users = get_all_users_controller()
         process_time = time.time() - start_time
         logger.info(f"Got users in {process_time:.2f} seconds")
@@ -54,7 +65,7 @@ async def get_all_users(request: Request, response: Response):
 
 
 @users_router.get(
-    "/{user_id}",
+    "/info/{user_id}",
     response_model=Union[
         UserOut, InternalServerErrorResponse, NotFoundResponse
     ],
@@ -87,6 +98,37 @@ async def get_user(request: Request, response: Response, user_id: str):
         response.status_code = 500
         return InternalServerErrorResponse(
             request_id=request_id, message=str(e), func="get_user"
+        )
+
+
+@users_router.get(
+    "/me",
+    response_model=Union[UserOut, InternalServerErrorResponse],
+)
+async def get_current_user_info(
+    request: Request,
+    response: Response,
+    current_user: dict = Depends(get_current_user),
+):
+    start_time = time.time()
+    request_id = request.state.request_id
+    try:
+        logger.info("Getting current user")
+        user = get_user_controller(current_user["sub"])
+        process_time = time.time() - start_time
+        logger.info(f"Got current user in {process_time:.2f} seconds")
+        return UserOut(
+            request_id=request_id,
+            process_time=process_time,
+            func="get_current_user_info",
+            message="User retrieved",
+            payload=user,
+        )
+    except Exception as e:
+        logger.error(f"Error getting current user: {e}")
+        response.status_code = 500
+        return InternalServerErrorResponse(
+            request_id=request_id, message=str(e), func="get_current_user_info"
         )
 
 
@@ -221,14 +263,15 @@ async def delete_user(
             )
 
         status = delete_user_controller(user_id)
+        process_time = time.time() - start_time
         if not status:
             response.status_code = 404
             return NotFoundResponse(
                 request_id=request_id,
+                process_time=process_time,
                 func="delete_user",
                 message="User not found",
             )
-        process_time = time.time() - start_time
         logger.info(f"Deleted user {user_id} in {process_time:.2f} seconds")
         return SuccessResponse(
             request_id=request_id,

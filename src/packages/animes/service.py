@@ -2,19 +2,22 @@ import aiohttp
 from loguru import logger
 from datetime import datetime, timezone
 from bs4 import BeautifulSoup
+from sqlalchemy import exists
 
+from databases.mysql.models import User
 from libraries.animeflv_scraper import (
     get_streaming_links,
     get_single_episode_download_link,
     get_range_episodes_download_links,
     get_emission_date,
 )
-from databases.mysql import DatabaseSession, Anime, Episode
+from databases.mysql import DatabaseSession, Anime, Episode, user_save_anime
 
 from .utils import (
     cast_anime_card_list,
     cast_anime_download_links,
     cast_anime_info,
+    cast_anime_info_list,
     cast_anime_streaming_links,
     cast_single_anime_download_link,
 )
@@ -39,10 +42,37 @@ def get_anime_cards(page: str):
     return anime_list
 
 
-async def get_anime_info_controller(anime: str):
+def get_is_saved_anime_list(anime_list: list, current_user: dict):
+    with DatabaseSession() as db:
+        anime_names = [anime["name"] for anime in anime_list]
+        saved_animes = (
+            db.query(Anime)
+            .join(user_save_anime, Anime.id == user_save_anime.c.anime_id)
+            .join(User, User.id == user_save_anime.c.user_id)
+            .filter(User.id == current_user["sub"])
+            .filter(Anime.name.in_(anime_names))
+            .all()
+        )
+        animes_saved_list = []
+        for anime in anime_list:
+            is_saved = False
+            for saved_anime in saved_animes:
+                if anime["name"] == saved_anime.name:
+                    is_saved = True
+                    break
+            animes_saved_list.append({**anime, "is_saved": is_saved})
+        return animes_saved_list
+
+
+async def get_anime_info_controller(anime: str, current_user: dict):
     anime_info = None
     with DatabaseSession() as db:
         anime_info = db.query(Anime).filter(Anime.id == anime).first()
+        is_saved = db.query(
+            exists()
+            .where(user_save_anime.c.anime_id == anime)
+            .where(user_save_anime.c.user_id == current_user["sub"])
+        ).scalar()
 
         if anime_info:
             anime_is_finished = anime_info.is_finished
@@ -61,11 +91,13 @@ async def get_anime_info_controller(anime: str):
             ):
                 logger.info(f"Found anime {anime} in cache database")
                 anime_response = cast_anime_info(
+                    anime_info.id,
                     anime_info.name,
                     anime_info.image_src,
                     anime_info.is_finished,
                     anime_info.description,
                     anime_info.week_day,
+                    is_saved,
                 )
                 return anime_response
 
@@ -93,7 +125,13 @@ async def get_anime_info_controller(anime: str):
                         anime_info.is_finished = True
                         anime_info.week_day = None
                     anime_response = cast_anime_info(
-                        name, cover_url, is_finished, description, week_day
+                        anime,
+                        name,
+                        cover_url,
+                        is_finished,
+                        description,
+                        week_day,
+                        is_saved,
                     )
                     logger.info(f"Updated anime {anime} in cache database")
 
@@ -117,18 +155,20 @@ async def get_anime_info_controller(anime: str):
                     db.refresh(new_anime)
 
                     anime_response = cast_anime_info(
+                        anime,
                         name,
                         cover_url,
                         is_finished,
                         parsed_description,
                         week_day,
+                        is_saved,
                     )
                     logger.info(f"Found anime {anime} in animeflv")
 
                 return anime_response
 
 
-async def search_anime_query_controller(query: str):
+async def search_anime_query_controller(query: str, current_user: dict):
     async with aiohttp.ClientSession() as session:
         async with session.get(HOST + f"/browse?q={query}") as response:
             page = await response.text()
@@ -145,7 +185,10 @@ async def search_anime_query_controller(query: str):
                     ) as response:
                         page = await response.text()
                         anime_list += get_anime_cards(page)
-            anime_card_list = cast_anime_card_list(anime_list)
+            anime_list_with_save = get_is_saved_anime_list(
+                anime_list, current_user
+            )
+            anime_card_list = cast_anime_card_list(anime_list_with_save)
             logger.info(
                 f"Found {anime_card_list.total} anime with query: {query}"
             )
@@ -153,11 +196,15 @@ async def search_anime_query_controller(query: str):
 
 
 async def get_streaming_links_controller(anime_name: str):
+    print("anime_name", anime_name)
     with DatabaseSession() as db:
         last_episode = None
         anime = db.query(Anime).filter(Anime.id == anime_name).first()
         if not anime:
-            return False, "Anime not found. Please search the anime info first."
+            return (
+                False,
+                "Anime not found. Please search the anime info first.",
+            )
 
     with DatabaseSession() as db:
         anime = db.query(Anime).filter(Anime.id == anime_name).first()
@@ -232,3 +279,104 @@ async def get_single_episode_download_link_controller(
         return None
 
     return cast_single_anime_download_link(name, download_link, episode_id)
+
+
+async def get_saved_animes_controller(current_user: dict):
+    with DatabaseSession() as db:
+        anime_list = (
+            db.query(Anime)
+            .join(user_save_anime, Anime.id == user_save_anime.c.anime_id)
+            .join(User, User.id == user_save_anime.c.user_id)
+            .filter(User.id == current_user["sub"])
+            .all()
+        )
+        anime_list_with_save = [
+            {**anime.__dict__, "is_saved": True} for anime in anime_list
+        ]
+        anime_info_list = cast_anime_info_list(anime_list_with_save)
+        logger.info(f"Found {anime_info_list.total} saved animes")
+        return anime_info_list
+
+
+async def save_anime_controller(anime_id: str, current_user: dict):
+    with DatabaseSession() as db:
+        anime = db.query(Anime).filter(Anime.id == anime_id).first()
+        if not anime:
+            await get_anime_info_controller(anime_id, current_user)
+
+    with DatabaseSession() as db:
+        anime = db.query(Anime).filter(Anime.id == anime_id).first()
+        is_saved = db.query(
+            exists()
+            .where(user_save_anime.c.user_id == current_user["sub"])
+            .where(user_save_anime.c.anime_id == anime_id)
+        ).scalar()
+
+        if is_saved:
+            return True, cast_anime_info(
+                anime.id,
+                anime.name,
+                anime.image_src,
+                anime.is_finished,
+                anime.description,
+                anime.week_day,
+                is_saved=True,
+            )
+
+        user_saved_anime = user_save_anime.insert().values(
+            user_id=current_user["sub"], anime_id=anime_id
+        )
+        db.execute(user_saved_anime)
+        db.commit()
+        return True, cast_anime_info(
+            anime.id,
+            anime.name,
+            anime.image_src,
+            anime.is_finished,
+            anime.description,
+            anime.week_day,
+            is_saved=True,
+        )
+
+
+async def delete_saved_anime_controller(anime_id: str, current_user: dict):
+    with DatabaseSession() as db:
+        anime = db.query(Anime).filter(Anime.id == anime_id).first()
+        if not anime:
+            await get_anime_info_controller(anime_id, current_user)
+
+    with DatabaseSession() as db:
+        anime = db.query(Anime).filter(Anime.id == anime_id).first()
+        is_saved = db.query(
+            exists()
+            .where(user_save_anime.c.user_id == current_user["sub"])
+            .where(user_save_anime.c.anime_id == anime_id)
+        ).scalar()
+
+        if not is_saved:
+            return True, cast_anime_info(
+                anime.id,
+                anime.name,
+                anime.image_src,
+                anime.is_finished,
+                anime.description,
+                anime.week_day,
+                is_saved=False,
+            )
+
+        user_saved_anime = (
+            user_save_anime.delete()
+            .where(user_save_anime.c.user_id == current_user["sub"])
+            .where(user_save_anime.c.anime_id == anime_id)
+        )
+        db.execute(user_saved_anime)
+        db.commit()
+        return True, cast_anime_info(
+            anime.id,
+            anime.name,
+            anime.image_src,
+            anime.is_finished,
+            anime.description,
+            anime.week_day,
+            is_saved=False,
+        )

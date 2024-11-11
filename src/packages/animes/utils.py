@@ -1,4 +1,4 @@
-from databases.mysql import Episode
+from databases.mysql import Episode as EpisodeModel
 
 from .responses import (
     Anime,
@@ -6,24 +6,47 @@ from .responses import (
     AnimeCardList,
     AnimeDownloadLink,
     AnimeDownloadLinkList,
+    AnimeList,
     AnimeStreamingLinks,
     Link,
 )
 
 
 def cast_anime_info(
+    anime_id: str,
     name: str,
-    cover_url: str,
+    image_src: str,
     is_finished: bool,
     description: str,
     week_day: str,
+    is_saved: bool = False,
 ):
     return Anime(
+        anime_id=anime_id,
         name=name,
         is_finished=is_finished,
         description=description,
-        image_src=cover_url,
+        image_src=image_src,
         week_day=week_day,
+        is_saved=is_saved,
+    )
+
+
+def cast_anime_info_list(anime_list: list[dict]):
+    return AnimeList(
+        items=[
+            cast_anime_info(
+                anime["id"],
+                anime["name"],
+                anime["image_src"],
+                anime["is_finished"],
+                anime["description"],
+                anime["week_day"],
+                anime["is_saved"],
+            )
+            for anime in anime_list
+        ],
+        total=len(anime_list),
     )
 
 
@@ -34,6 +57,7 @@ def cast_anime_card_list(anime_card_list: list[dict]):
                 name=anime["name"],
                 image_src=anime["cover_url"],
                 anime_id=anime["anime_id"],
+                is_saved=anime["is_saved"],
             )
             for anime in anime_card_list
         ],
@@ -42,12 +66,12 @@ def cast_anime_card_list(anime_card_list: list[dict]):
 
 
 def cast_anime_streaming_links(
-    anime_name: str, streaming_links: list[Episode]
+    anime_name: str, streaming_links: list[EpisodeModel]
 ):
     return AnimeStreamingLinks(
         name=anime_name,
         episodes=[
-            Episode(
+            EpisodeModel(
                 name=episode.name,
                 link=episode.link,
                 episode_id=episode.episode_id,

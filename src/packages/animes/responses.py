@@ -58,11 +58,13 @@ class AnimeDownloadLinkListOut(SuccessResponse):
 
 
 class Anime(BaseModel):
+    anime_id: str
     name: str
     description: str
     image_src: str
     is_finished: bool
     week_day: str | None
+    is_saved: bool = False
 
     model_config = ConfigDict(
         alias_generator=to_camel,
@@ -75,10 +77,20 @@ class AnimeOut(SuccessResponse):
     payload: Anime | None
 
 
+class AnimeList(BaseModel):
+    items: list[Anime]
+    total: int
+
+
+class AnimeListOut(SuccessResponse):
+    payload: AnimeList | None
+
+
 class AnimeCard(BaseModel):
     name: str
     image_src: str
     anime_id: str
+    is_saved: bool = False
 
     model_config = ConfigDict(
         alias_generator=to_camel,

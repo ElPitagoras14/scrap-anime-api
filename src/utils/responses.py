@@ -1,5 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from starlette import status
+from pydantic.alias_generators import to_camel
 
 
 class ResponseModel(BaseModel):
@@ -8,6 +9,12 @@ class ResponseModel(BaseModel):
     message: str
     status_code: str
     func: str = None
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+    )
 
 
 class SuccessResponse(ResponseModel):

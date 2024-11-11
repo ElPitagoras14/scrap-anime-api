@@ -1,15 +1,21 @@
 import os
 import time
 from typing import Union
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Depends, Request, Response
 from loguru import logger
 
 from utils.responses import InternalServerErrorResponse, ConflictResponse
+
+from ..auth import get_current_user
+
 from .service import (
+    delete_saved_anime_controller,
     get_anime_info_controller,
+    get_saved_animes_controller,
     get_streaming_links_controller,
     get_single_episode_download_link_controller,
     get_range_episodes_download_links_controller,
+    save_anime_controller,
     search_anime_query_controller,
 )
 from .responses import (
@@ -18,6 +24,7 @@ from .responses import (
     AnimeDownloadLinkOut,
     AnimeStreamingLinksOut,
     AnimeOut,
+    AnimeListOut,
 )
 
 animes_router = APIRouter()
@@ -30,12 +37,17 @@ proj_dir = os.path.dirname(curr_workspace)
     "/info/{anime}",
     response_model=Union[AnimeOut, InternalServerErrorResponse],
 )
-async def get_anime_info(anime: str, response: Response, request: Request):
+async def get_anime_info(
+    anime: str,
+    response: Response,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+):
     start_time = time.time()
     request_id = request.state.request_id
     try:
         logger.info(f"Getting anime information for {anime}")
-        anime_info = await get_anime_info_controller(anime)
+        anime_info = await get_anime_info_controller(anime, current_user)
         process_time = time.time() - start_time
         logger.info(
             f"Got anime information for {anime} in {process_time:.2f} seconds"
@@ -59,12 +71,19 @@ async def get_anime_info(anime: str, response: Response, request: Request):
     "/search",
     response_model=Union[AnimeCardListOut, InternalServerErrorResponse],
 )
-async def search_anime_query(query: str, response: Response, request: Request):
+async def search_anime_query(
+    query: str,
+    response: Response,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+):
     start_time = time.time()
     request_id = request.state.request_id
     try:
         logger.info(f"Searching for anime with query: {query}")
-        anime_card_list = await search_anime_query_controller(query)
+        anime_card_list = await search_anime_query_controller(
+            query, current_user
+        )
         process_time = time.time() - start_time
         logger.info(
             f"Got anime search results for {query} in "
@@ -216,4 +235,136 @@ async def get_single_episode_download_link(
             request_id=request_id,
             message=str(e),
             func="get_single_episode_download_link",
+        )
+
+
+@animes_router.get(
+    "/saved",
+    response_model=Union[AnimeListOut, InternalServerErrorResponse],
+)
+async def get_saved_animes(
+    response: Response,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+):
+    start_time = time.time()
+    request_id = request.state.request_id
+    try:
+        logger.info("Getting saved animes")
+        anime_card_list = await get_saved_animes_controller(current_user)
+        process_time = time.time() - start_time
+        logger.info(f"Got saved animes in {process_time:.2f} seconds")
+        return AnimeListOut(
+            request_id=request_id,
+            process_time=process_time,
+            func="get_saved_animes",
+            message="Saved animes retrieved",
+            payload=anime_card_list,
+        )
+    except Exception as e:
+        logger.error(f"Error getting saved animes: {e}")
+        response.status_code = 500
+        return InternalServerErrorResponse(
+            request_id=request_id, message=str(e), func="get_saved_animes"
+        )
+
+
+@animes_router.post(
+    "/saved/{anime_id}",
+    response_model=Union[
+        AnimeOut, InternalServerErrorResponse, ConflictResponse
+    ],
+)
+async def save_anime(
+    anime_id: str,
+    response: Response,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+):
+    start_time = time.time()
+    request_id = request.state.request_id
+    try:
+        logger.info(f"Adding anime with id: {anime_id} to saved")
+        status, value = await save_anime_controller(anime_id, current_user)
+        process_time = time.time() - start_time
+        if not status:
+            logger.error(
+                "Error adding anime with "
+                + f"id: {anime_id} to saved: {value}"
+            )
+            response.status_code = 409
+            return ConflictResponse(
+                request_id=request_id,
+                message=value,
+                func="save_anime",
+            )
+        logger.info(
+            f"Anime with id: {anime_id} added to "
+            + f"saved in {process_time:.2f} seconds"
+        )
+        return AnimeOut(
+            request_id=request_id,
+            process_time=process_time,
+            func="save_anime",
+            message="Anime added to saved",
+            payload=value,
+        )
+    except Exception as e:
+        logger.error(f"Error adding anime with id: {anime_id} to saved: {e}")
+        response.status_code = 500
+        return InternalServerErrorResponse(
+            request_id=request_id,
+            message=str(e),
+            func="save_anime",
+        )
+
+
+@animes_router.delete(
+    "/saved/{anime_id}",
+    response_model=Union[
+        AnimeOut, InternalServerErrorResponse, ConflictResponse
+    ],
+)
+async def delete_saved_anime(
+    anime_id: str,
+    response: Response,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+):
+    start_time = time.time()
+    request_id = request.state.request_id
+    try:
+        logger.info(f"Deleting saved anime with id: {anime_id}")
+        status, value = await delete_saved_anime_controller(
+            anime_id, current_user
+        )
+        process_time = time.time() - start_time
+        if not status:
+            logger.error(
+                "Error deleting saved anime with " + f"id: {anime_id}: {value}"
+            )
+            response.status_code = 409
+            return ConflictResponse(
+                request_id=request_id,
+                message=value,
+                func="delete_saved_anime",
+            )
+        logger.info(
+            f"Deleted saved anime with id: {anime_id} "
+            + f"in {process_time:.2f} seconds"
+        )
+        return AnimeOut(
+            request_id=request_id,
+            process_time=process_time,
+            func="delete_saved_anime",
+            message="Anime deleted from saved",
+            payload=value,
+        )
+    except Exception as e:
+        logger.error(f"Error deleting saved anime with id: {anime_id}: {e}")
+        response.status_code = 500
+        return InternalServerErrorResponse(
+            request_id=request_id,
+            message=str(e),
+            func="delete_saved_anime",
         )
