@@ -23,7 +23,7 @@ class AnimeDownloadLink(BaseModel):
 
 class AnimeDownloadLinkList(BaseModel):
     name: str
-    episodes: list[AnimeDownloadLink | None] | None
+    items: list[AnimeDownloadLink | None] | None
     total: int
 
 
@@ -41,7 +41,7 @@ class Episode(BaseModel):
 
 class AnimeStreamingLinks(BaseModel):
     name: str
-    episodes: list[Episode] | None
+    items: list[Episode] | None
     total: int
 
 
@@ -61,7 +61,7 @@ class Anime(BaseModel):
     anime_id: str
     name: str
     description: str
-    image_src: str
+    image: str
     is_finished: bool
     week_day: str | None
     is_saved: bool = False
@@ -88,7 +88,7 @@ class AnimeListOut(SuccessResponse):
 
 class AnimeCard(BaseModel):
     name: str
-    image_src: str
+    image: str
     anime_id: str
     is_saved: bool = False
 
@@ -106,3 +106,32 @@ class AnimeCardList(BaseModel):
 
 class AnimeCardListOut(SuccessResponse):
     payload: AnimeCardList | None
+
+
+class AnimeCache(BaseModel):
+    anime_id: str
+    name: str
+    size: float
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+    )
+
+
+class AnimeCacheList(BaseModel):
+    items: list[AnimeCache]
+    size: float
+    measured_in: str
+    total: int
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+    )
+
+
+class AnimeCacheListOut(SuccessResponse):
+    payload: AnimeCacheList | None

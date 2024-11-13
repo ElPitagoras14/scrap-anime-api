@@ -9,7 +9,7 @@ Anime Scraper API is a project built with FastAPI to scrape anime data and downl
 - Python 3.7+
 - pip
 - Docker (Only for Docker use)
-- MySQL Database
+- Postgres Database
 
 ## Getting Started
 
@@ -72,14 +72,14 @@ The server should be running at `http://localhost:8000`.
 
 The server should be running at `http://127.0.0.1:8000`.
 
-### MySQL (For Development)
+### Postgres (For Development)
 
 > [!NOTE]
-> You can use your own database with the `init.sql` file at `src/databases/mysql/init.sql`.
+> You can use your own database with the `init.sql` file at `src/databases/postgres/init.sql`.
 
 1. Fill the environment variables for `scraper-db` service in `docker-compose.yaml` according to Environment Variables section.
 
-2. Create a MySQL Database with the following command:
+2. Create a Postgres Database with the following command:
 
    ```bash
    docker-compose up -d scraper-db
@@ -107,16 +107,17 @@ You can access the automatically generated FastAPI documentation at `http://127.
 - `AUTH_EXPIRE_MINUTES` - JWT token expiration time in minutes.
 - `LOG_APP_PATH` - Path where application logs will be saved. Recommended for Docker: /var/log/scraper-anime/app.log.
 - `LOG_ERROR_PATH` - Path where error logs will be saved. Recommended for Docker: /var/log/scraper-anime/error.log.
-- `MYSQL_HOST` - MySQL database host, corresponding to the database service name in Docker.
-- `MYSQL_USER` - Username for connecting to the MySQL database. Default: `root`.
-- `MYSQL_PASS` - Password for connecting to the MySQL database. It must match the password used to create the database.
-- `MYSQL_PORT` - Port where the MySQL database is hosted. Default: `3306`.
-- `MYSQL_DATABASE` - Name of the database to connect to. Must match the database used during setup.
+- `POSTGRES_HOST` - Postgres database host, corresponding to the database service name in Docker.
+- `POSTGRES_USER` - Username for connecting to the Postgres database. Must match the user used to create the database.
+- `POSTGRES_PASS` - Password for connecting to the Postgres database. Must match the password used to create the database.
+- `POSTGRES_PORT` - Port where the Postgres database is hosted. Default: `5432`.
+- `POSTGRES_DATABASE` - Name of the database to connect to. Must match the database used during setup.
 
-### MySQL service
+### Postgres service
 
-- `MYSQL_ROOT_PASSWORD` - Password for the `root` user to be created in the MySQL database.
-- `MYSQL_DATABASE` - Name of the database to be created in the MySQL service.
+- `POSTGRES_USER` - Username for the admin user to be created in the Postgres database.
+- `POSTGRES_PASSWORD` - Password for the admin user to be created in the Postgres database.
+- `POSTGRES_DB` - Name of the database to be created in the Postgres service.
 
 ## Author
 

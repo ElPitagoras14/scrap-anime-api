@@ -1,5 +1,22 @@
 version: "3"
 services:
+  scraper-db:
+    image: postgres:17.0
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=
+      - POSTGRES_PASSWORD=
+      - POSTGRES_DB=
+    volumes:
+      - ./docker-data/postgres-logs:/var/log/postgresql
+      - ./docker-data/postgres-data:/var/lib/postgresql/data
+      - ./src/databases/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    container_name: scraper-db
+    restart: on-failure
+    networks:
+      - server-network
+
   scraper-api:
     build: .
     ports:
@@ -8,39 +25,23 @@ services:
       - HOST=0.0.0.0
       - PORT=8000
       - APP_NAME=main:app
-      - APP_ADMIN_USER=administrator
-      - APP_ADMIN_PASS=scraper
+      - APP_ADMIN_USER=
+      - APP_ADMIN_PASS=
       - AUTH_SECRET_KEY=
       - AUTH_ALGORITHM=
       - AUTH_EXPIRE_MINUTES=
       - LOG_APP_PATH=/var/log/scraper-anime/app.log
       - LOG_ERROR_PATH=/var/log/scraper-anime/error.log
-      - MYSQL_HOST=scraper-db
-      - MYSQL_USER=root
-      - MYSQL_PASS=
-      - MYSQL_PORT=3306
-      - MYSQL_DATABASE=
+      - POSTGRES_HOST=scraper-db
+      - POSTGRES_USER=
+      - POSTGRES_PASS=
+      - POSTGRES_PORT=5432
+      - POSTGRES_DATABASE=
     volumes:
       - ./docker-data/app-logs:/var/log/scraper-anime
     depends_on:
       - scraper-db
     container_name: scraper-api
-    restart: on-failure
-    networks:
-      - server-network
-
-  scraper-db:
-    image: mysql:9.1.0
-    ports:
-      - "3306:3306"
-    environment:
-      - MYSQL_ROOT_PASSWORD=
-      - MYSQL_DATABASE=
-    volumes:
-      - ./docker-data/mysql-logs:/var/log/mysql
-      - ./docker-data/mysql-data:/var/lib/mysql
-      - ./src/databases/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
-    container_name: scraper-db
     restart: on-failure
     networks:
       - server-network

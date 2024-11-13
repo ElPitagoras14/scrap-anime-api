@@ -1,6 +1,6 @@
 from loguru import logger
 
-from databases.mysql import DatabaseSession, User
+from databases.postgres import DatabaseSession, User
 
 from .utils import create_access_token, get_password_hash, verify_password
 
@@ -17,22 +17,24 @@ def login_controller(username: str, password: str):
         logger.info(f"User {username} logged in")
         return True, create_access_token(
             {
-                "sub": user.id,
+                "sub": str(user.id),
                 "username": user.username,
                 "is_active": user.is_active,
                 "is_admin": user.is_admin,
-                "profile_img": user.profile_img,
+                "avatar": user.avatar,
             }
         )
 
 
-def register_controller(username: str, password: str):
+def register_controller(username: str, password: str, avatar: str = None):
     with DatabaseSession() as db:
         user = db.query(User).filter(User.username == username).first()
         if user:
             return False, "User already exists"
         hashed_password = get_password_hash(password)
         user = User(username=username, password=hashed_password)
+        if avatar:
+            user.avatar = avatar
         db.add(user)
         db.commit()
         logger.info(f"User {username} registered")

@@ -16,10 +16,10 @@ h11==0.14.0
 idna==3.10
 loguru==0.7.2
 multidict==6.1.0
-mysql-connector-python==9.1.0
 passlib==1.7.4
 playwright==1.48.0
 propcache==0.2.0
+psycopg2==2.9.10
 pyasn1==0.6.1
 pydantic==2.9.2
 pydantic-settings==2.6.1

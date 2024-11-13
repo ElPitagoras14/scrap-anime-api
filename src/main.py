@@ -5,8 +5,8 @@ from loguru import logger
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from config import general_settings
-from databases.mysql.client import DatabaseSession
-from databases.mysql.models import User
+from databases.postgres.client import DatabaseSession
+from databases.postgres.models import User
 from routes import router
 from log import configure_logs
 from contextlib import asynccontextmanager
@@ -29,7 +29,7 @@ configure_logs()
 async def lifespan(app: FastAPI):
     with DatabaseSession() as db:
         root_user = (
-            db.query(User).filter(User.username == APP_ADMIN_USER).first()
+            db.query(User).filter(User.is_admin).first()
         )
         if not root_user:
             hashed_password = get_password_hash(APP_ADMIN_PASS)

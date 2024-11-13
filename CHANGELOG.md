@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.2.0] - 2024-11-14
+
+### Added
+
+- Profile configuration feature
+- More cacheable anime info
+- Manage cache data
+- Manage users
+
+### Changed
+
+- MySQL database to Postgres database
+- `profile_img` to `img`
+
 ## [2.1.0] - 2024-11-12
 
 ### Added

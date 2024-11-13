@@ -2,13 +2,15 @@ from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 from datetime import datetime
 
+from ..auth import Token
+
 from utils.responses import SuccessResponse
 
 
 class User(BaseModel):
     id: str
     username: str
-    profile_img: str | None
+    avatar: str | None
     is_admin: bool
     is_active: bool
     created_at: datetime
@@ -26,9 +28,18 @@ class UserList(BaseModel):
     total: int
 
 
+class UserToken(BaseModel):
+    token: Token
+    user: User
+
+
 class UserOut(SuccessResponse):
     payload: User | None
 
 
 class UserListOut(SuccessResponse):
     payload: UserList | None
+
+
+class UserTokenOut(SuccessResponse):
+    payload: UserToken | None

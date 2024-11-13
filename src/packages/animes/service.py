@@ -1,23 +1,26 @@
+import base64
+from decimal import Decimal
 import aiohttp
 from loguru import logger
 from datetime import datetime, timezone
 from bs4 import BeautifulSoup
-from sqlalchemy import exists
+from sqlalchemy import exists, text
 
-from databases.mysql.models import User
+from databases.postgres.models import User
 from libraries.animeflv_scraper import (
     get_streaming_links,
     get_single_episode_download_link,
     get_range_episodes_download_links,
     get_emission_date,
 )
-from databases.mysql import DatabaseSession, Anime, Episode, user_save_anime
+from databases.postgres import DatabaseSession, Anime, Episode, user_save_anime
 
 from .utils import (
     cast_anime_card_list,
     cast_anime_download_links,
     cast_anime_info,
     cast_anime_info_list,
+    cast_anime_size_list,
     cast_anime_streaming_links,
     cast_single_anime_download_link,
 )
@@ -93,7 +96,7 @@ async def get_anime_info_controller(anime: str, current_user: dict):
                 anime_response = cast_anime_info(
                     anime_info.id,
                     anime_info.name,
-                    anime_info.image_src,
+                    anime_info.img,
                     anime_info.is_finished,
                     anime_info.description,
                     anime_info.week_day,
@@ -117,6 +120,13 @@ async def get_anime_info_controller(anime: str, current_user: dict):
                 ].text
                 parsed_description = description.replace("\n", "").strip()
 
+                b64_image = None
+                async with session.get(
+                    cover_url, allow_redirects=True
+                ) as response:
+                    cover_data = await response.read()
+                    b64_image = base64.b64encode(cover_data).decode("utf-8")
+
                 week_day = None
                 anime_response = None
                 new_anime = None
@@ -127,7 +137,7 @@ async def get_anime_info_controller(anime: str, current_user: dict):
                     anime_response = cast_anime_info(
                         anime,
                         name,
-                        cover_url,
+                        b64_image,
                         is_finished,
                         description,
                         week_day,
@@ -145,7 +155,7 @@ async def get_anime_info_controller(anime: str, current_user: dict):
                         id=anime,
                         name=name,
                         description=parsed_description,
-                        image_src=cover_url,
+                        img=b64_image,
                         is_finished=is_finished,
                         week_day=week_day,
                         last_peek=datetime.now(timezone.utc),
@@ -157,7 +167,7 @@ async def get_anime_info_controller(anime: str, current_user: dict):
                     anime_response = cast_anime_info(
                         anime,
                         name,
-                        cover_url,
+                        b64_image,
                         is_finished,
                         parsed_description,
                         week_day,
@@ -302,7 +312,10 @@ async def save_anime_controller(anime_id: str, current_user: dict):
     with DatabaseSession() as db:
         anime = db.query(Anime).filter(Anime.id == anime_id).first()
         if not anime:
-            await get_anime_info_controller(anime_id, current_user)
+            return (
+                False,
+                "Anime not found. Please search the anime info first.",
+            )
 
     with DatabaseSession() as db:
         anime = db.query(Anime).filter(Anime.id == anime_id).first()
@@ -316,7 +329,7 @@ async def save_anime_controller(anime_id: str, current_user: dict):
             return True, cast_anime_info(
                 anime.id,
                 anime.name,
-                anime.image_src,
+                anime.img,
                 anime.is_finished,
                 anime.description,
                 anime.week_day,
@@ -331,7 +344,7 @@ async def save_anime_controller(anime_id: str, current_user: dict):
         return True, cast_anime_info(
             anime.id,
             anime.name,
-            anime.image_src,
+            anime.img,
             anime.is_finished,
             anime.description,
             anime.week_day,
@@ -357,7 +370,7 @@ async def delete_saved_anime_controller(anime_id: str, current_user: dict):
             return True, cast_anime_info(
                 anime.id,
                 anime.name,
-                anime.image_src,
+                anime.img,
                 anime.is_finished,
                 anime.description,
                 anime.week_day,
@@ -374,9 +387,69 @@ async def delete_saved_anime_controller(anime_id: str, current_user: dict):
         return True, cast_anime_info(
             anime.id,
             anime.name,
-            anime.image_src,
+            anime.img,
             anime.is_finished,
             anime.description,
             anime.week_day,
             is_saved=False,
         )
+
+
+async def get_all_animes_cache_controller():
+    with DatabaseSession() as db:
+        query = text(
+            """
+            WITH
+            serie_cache AS (
+                SELECT
+                    a.id,
+                    a.name,
+                    SUM(pg_column_size(a)) / 1024.0 AS cache_in_kb
+                FROM
+                    animes a
+                GROUP BY a.id
+            ),
+            episodes_cache AS (
+                SELECT
+                    e.anime_id,
+                    SUM(pg_column_size(e)) / 1024.0 AS cache_in_kb
+                FROM
+                    episodes e
+                GROUP BY e.anime_id
+            )
+            SELECT
+                serie_cache.id,
+                serie_cache.name,
+                COALESCE(serie_cache.cache_in_kb, 0)
+                + COALESCE(episodes_cache.cache_in_kb, 0) AS total_cache_in_kb
+            FROM
+                serie_cache
+            LEFT JOIN
+                episodes_cache
+            ON
+                serie_cache.id = episodes_cache.anime_id
+            ORDER BY total_cache_in_kb DESC;
+            """
+        )
+
+        results = db.execute(query).fetchall()
+        clean_results = [
+            {
+                "anime_id": result[0],
+                "name": result[1],
+                "size": result[2].quantize(Decimal("0.01")),
+            }
+            for result in results
+        ]
+        return cast_anime_size_list(clean_results)
+
+
+async def delete_anime_cache_controller(anime_id: str):
+    with DatabaseSession() as db:
+        anime = db.query(Anime).filter(Anime.id == anime_id).first()
+        if not anime:
+            return False, "Anime not found in cache database"
+
+        db.delete(anime)
+        db.commit()
+        return True, "Anime deleted from cache database"

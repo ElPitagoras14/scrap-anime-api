@@ -4,12 +4,18 @@ from typing import Union
 from fastapi import APIRouter, Depends, Request, Response
 from loguru import logger
 
-from utils.responses import InternalServerErrorResponse, ConflictResponse
+from utils.responses import (
+    InternalServerErrorResponse,
+    ConflictResponse,
+    SuccessResponse,
+)
 
 from ..auth import get_current_user
 
 from .service import (
+    delete_anime_cache_controller,
     delete_saved_anime_controller,
+    get_all_animes_cache_controller,
     get_anime_info_controller,
     get_saved_animes_controller,
     get_streaming_links_controller,
@@ -25,6 +31,7 @@ from .responses import (
     AnimeStreamingLinksOut,
     AnimeOut,
     AnimeListOut,
+    AnimeCacheListOut,
 )
 
 animes_router = APIRouter()
@@ -367,4 +374,97 @@ async def delete_saved_anime(
             request_id=request_id,
             message=str(e),
             func="delete_saved_anime",
+        )
+
+
+@animes_router.get(
+    "/cache",
+    response_model=Union[
+        AnimeCacheListOut, InternalServerErrorResponse, ConflictResponse
+    ],
+)
+async def get_all_animes_cache(
+    response: Response,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+):
+    start_time = time.time()
+    request_id = request.state.request_id
+    try:
+        logger.info("Getting all animes cache")
+        if not current_user["is_admin"]:
+            response.status_code = 409
+            return ConflictResponse(
+                request_id=request_id,
+                func="change_user_status",
+                message="Unauthorized",
+            )
+        cache = await get_all_animes_cache_controller()
+        process_time = time.time() - start_time
+        logger.info(f"Got all animes cache in {process_time:.2f} seconds")
+        return AnimeCacheListOut(
+            request_id=request_id,
+            process_time=process_time,
+            func="get_all_animes_cache",
+            message="All animes cache retrieved",
+            payload=cache,
+        )
+    except Exception as e:
+        logger.error(f"Error getting all animes cache: {e}")
+        response.status_code = 500
+        return InternalServerErrorResponse(
+            request_id=request_id, message=str(e), func="get_all_animes_cache"
+        )
+
+
+@animes_router.delete(
+    "/cache/{anime_id}",
+    response_model=Union[
+        SuccessResponse, InternalServerErrorResponse, ConflictResponse
+    ],
+)
+async def delete_anime_cache(
+    anime_id: str,
+    response: Response,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+):
+    start_time = time.time()
+    request_id = request.state.request_id
+    try:
+        logger.info(f"Deleting anime cache with id: {anime_id}")
+        if not current_user["is_admin"]:
+            response.status_code = 409
+            return ConflictResponse(
+                request_id=request_id,
+                func="change_user_status",
+                message="Unauthorized",
+            )
+        success, value = await delete_anime_cache_controller(anime_id)
+        if not success:
+            logger.error(
+                f"Error deleting anime cache with id: {anime_id}: {value}"
+            )
+            response.status_code = 409
+            return ConflictResponse(
+                request_id=request_id,
+                message=value,
+                func="delete_anime_cache",
+            )
+        process_time = time.time() - start_time
+        logger.info(
+            f"Deleted anime cache with id: {anime_id} "
+            + f"in {process_time:.2f} seconds"
+        )
+        return SuccessResponse(
+            request_id=request_id,
+            process_time=process_time,
+            func="delete_anime_cache",
+            message="Anime cache deleted",
+        )
+    except Exception as e:
+        logger.error(f"Error deleting anime cache with id: {anime_id}: {e}")
+        response.status_code = 500
+        return InternalServerErrorResponse(
+            request_id=request_id, message=str(e), func="delete_anime_cache"
         )

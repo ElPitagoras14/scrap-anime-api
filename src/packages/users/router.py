@@ -14,14 +14,16 @@ from utils.responses import (
 from ..auth import get_current_user
 
 from .service import (
+    change_user_avatar_controller,
     change_user_status_controller,
     create_user_controller,
     delete_user_controller,
     get_user_controller,
     get_all_users_controller,
+    update_user_info_controller,
 )
-from .responses import UserListOut, UserOut
-from .schemas import NewUser
+from .responses import UserListOut, UserOut, UserTokenOut
+from .schemas import NewUser, UpdateUser
 
 users_router = APIRouter()
 
@@ -40,7 +42,7 @@ async def get_all_users(
     try:
         logger.info("Getting users")
         if not current_user["is_admin"]:
-            response.status_code = 403
+            response.status_code = 409
             return ConflictResponse(
                 request_id=request_id,
                 func="change_user_status",
@@ -170,6 +172,108 @@ async def create_user(new_user: NewUser, request: Request, response: Response):
 
 
 @users_router.put(
+    "/info/{user_id}",
+    response_model=Union[
+        UserTokenOut,
+        InternalServerErrorResponse,
+        ConflictResponse,
+    ],
+)
+async def update_user_info(
+    request: Request,
+    response: Response,
+    user_id: str,
+    current_user: dict = Depends(get_current_user),
+    new_user: UpdateUser = None,
+):
+    start_time = time.time()
+    request_id = request.state.request_id
+    try:
+        logger.info(f"Updating user {user_id} info")
+
+        if current_user["sub"] != user_id:
+            response.status_code = 409
+            return ConflictResponse(
+                request_id=request_id,
+                func="update_user_info",
+                message="Cannot update own info",
+            )
+
+        success, value = update_user_info_controller(user_id, new_user)
+        process_time = time.time() - start_time
+        if not success:
+            response.status_code = 409
+            return ConflictResponse(
+                request_id=request_id,
+                process_time=process_time,
+                func="update_user_info",
+                message=value,
+            )
+        logger.info(
+            f"Updated user {user_id} info in {process_time:.2f} seconds"
+        )
+        return UserTokenOut(
+            request_id=request_id,
+            process_time=process_time,
+            func="update_user_info",
+            message="User info updated",
+            payload=value,
+        )
+    except Exception as e:
+        logger.error(f"Error updating user {user_id} info: {e}")
+        response.status_code = 500
+        return InternalServerErrorResponse(
+            request_id=request_id, message=str(e), func="update_user_info"
+        )
+
+
+@users_router.put(
+    "/avatar",
+    response_model=Union[
+        UserOut, InternalServerErrorResponse, NotFoundResponse
+    ],
+)
+async def change_user_avatar(
+    request: Request,
+    response: Response,
+    avatar: str,
+    current_user: dict = Depends(get_current_user),
+):
+    start_time = time.time()
+    request_id = request.state.request_id
+    try:
+        user_id = current_user["sub"]
+        logger.info(f"Changing user {user_id} avatar")
+
+        success, value = change_user_avatar_controller(user_id, avatar)
+        process_time = time.time() - start_time
+        if not success:
+            response.status_code = 404
+            return NotFoundResponse(
+                request_id=request_id,
+                process_time=process_time,
+                func="change_user_avatar",
+                message="User not found",
+            )
+        logger.info(
+            f"Changed user {user_id} avatar in {process_time:.2f} seconds"
+        )
+        return UserOut(
+            request_id=request_id,
+            process_time=process_time,
+            func="change_user_avatar",
+            message="User avatar changed",
+            payload=value,
+        )
+    except Exception as e:
+        logger.error(f"Error changing user {user_id} avatar: {e}")
+        response.status_code = 500
+        return InternalServerErrorResponse(
+            request_id=request_id, message=str(e), func="change_user_avatar"
+        )
+
+
+@users_router.put(
     "/status/{user_id}",
     response_model=Union[
         UserOut,
@@ -192,7 +296,7 @@ async def change_user_status(
         logger.info(f"Changing user {user_id} status")
 
         if not current_user["is_admin"]:
-            response.status_code = 403
+            response.status_code = 409
             return ConflictResponse(
                 request_id=request_id,
                 func="change_user_status",
@@ -200,7 +304,7 @@ async def change_user_status(
             )
 
         if current_user["sub"] == user_id:
-            response.status_code = 403
+            response.status_code = 409
             return ConflictResponse(
                 request_id=request_id,
                 func="change_user_status",
@@ -255,7 +359,7 @@ async def delete_user(
         logger.info(f"Deleting user {user_id}")
 
         if not current_user["is_admin"]:
-            response.status_code = 403
+            response.status_code = 409
             return ConflictResponse(
                 request_id=request_id,
                 func="delete_user",

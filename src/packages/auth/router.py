@@ -37,6 +37,7 @@ async def login(request: Request, response: Response, login_input: AuthInfo):
 
         if not success:
             logger.warning(f"Error logging in: {value}")
+            response.status_code = 409
             return ConflictResponse(
                 request_id=request_id,
                 process_time=process_time,
@@ -61,18 +62,23 @@ async def login(request: Request, response: Response, login_input: AuthInfo):
 
 
 @auth_router.post("/register")
-async def register(register_info: AuthInfo, request: Request):
+async def register(
+    register_info: AuthInfo, request: Request, response: Response
+):
     start_time = time.time()
     request_id = request.state.request_id
     try:
         logger.info("Registering")
         success, value = register_controller(
-            register_info.username, register_info.password
+            register_info.username,
+            register_info.password,
+            register_info.avatar,
         )
         process_time = time.time() - start_time
 
         if not success:
             logger.warning(f"Error registering: {value}")
+            response.status_code = 409
             return ConflictResponse(
                 request_id=request_id,
                 process_time=process_time,

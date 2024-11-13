@@ -1,4 +1,4 @@
-from databases.mysql import Episode as EpisodeModel
+from databases.postgres import Episode as EpisodeModel
 
 from .responses import (
     Anime,
@@ -9,13 +9,15 @@ from .responses import (
     AnimeList,
     AnimeStreamingLinks,
     Link,
+    AnimeCache,
+    AnimeCacheList,
 )
 
 
 def cast_anime_info(
     anime_id: str,
     name: str,
-    image_src: str,
+    image: str,
     is_finished: bool,
     description: str,
     week_day: str,
@@ -26,7 +28,7 @@ def cast_anime_info(
         name=name,
         is_finished=is_finished,
         description=description,
-        image_src=image_src,
+        image=image,
         week_day=week_day,
         is_saved=is_saved,
     )
@@ -38,7 +40,7 @@ def cast_anime_info_list(anime_list: list[dict]):
             cast_anime_info(
                 anime["id"],
                 anime["name"],
-                anime["image_src"],
+                anime["img"],
                 anime["is_finished"],
                 anime["description"],
                 anime["week_day"],
@@ -55,7 +57,7 @@ def cast_anime_card_list(anime_card_list: list[dict]):
         items=[
             AnimeCard(
                 name=anime["name"],
-                image_src=anime["cover_url"],
+                image=anime["cover_url"],
                 anime_id=anime["anime_id"],
                 is_saved=anime["is_saved"],
             )
@@ -70,7 +72,7 @@ def cast_anime_streaming_links(
 ):
     return AnimeStreamingLinks(
         name=anime_name,
-        episodes=[
+        items=[
             EpisodeModel(
                 name=episode.name,
                 link=episode.link,
@@ -103,7 +105,7 @@ def cast_single_anime_download_link(
 def cast_anime_download_links(download_links: dict):
     return AnimeDownloadLinkList(
         name=download_links["anime"],
-        episodes=[
+        items=[
             cast_single_anime_download_link(
                 episode["name"],
                 episode["download_info"],
@@ -112,4 +114,20 @@ def cast_anime_download_links(download_links: dict):
             for episode in download_links["download_links"]
         ],
         total=len(download_links["download_links"]),
+    )
+
+
+def cast_anime_size(anime: str, name: str, size: float):
+    return AnimeCache(animeId=anime, name=name, size=size)
+
+
+def cast_anime_size_list(anime_info_list: list[dict]):
+    return AnimeCacheList(
+        items=[
+            cast_anime_size(anime["anime_id"], anime["name"], anime["size"])
+            for anime in anime_info_list
+        ],
+        size=sum([anime["size"] for anime in anime_info_list]),
+        measured_in="KB",
+        total=len(anime_info_list),
     )

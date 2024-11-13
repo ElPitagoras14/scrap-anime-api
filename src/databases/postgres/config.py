@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 from pydantic_settings import SettingsConfigDict
 
 
-class MysqlSettings(BaseSettings):
+class PostgresSettings(BaseSettings):
     HOST: str
     USER: str
     PASS: str
@@ -14,8 +14,8 @@ class MysqlSettings(BaseSettings):
         env_file=find_dotenv(filename=".env", usecwd=True),
         env_file_encoding="utf-8",
         extra="ignore",
-        env_prefix="MYSQL_",
+        env_prefix="POSTGRES_",
     )
 
 
-mysql_settings = MysqlSettings()
+postgres_settings = PostgresSettings()
