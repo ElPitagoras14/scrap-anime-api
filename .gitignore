@@ -5,7 +5,6 @@ __pycache__/
 
 data/
 .env
-docker-compose.yaml
 docker-data/
 
 # C extensions
