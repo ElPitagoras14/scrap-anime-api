@@ -1,5 +1,8 @@
 # Anime Scraper API
 
+> [!CAUTION]
+> This repository has been migrated to be part of a monorepo at [anime-scraper](https://github.com/ElPitagoras14/anime-scraper).
+
 ## Description
 
 Anime Scraper API is a project built with FastAPI to scrape anime data and download links.
